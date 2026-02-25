@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>💀 Skull Games Arcade</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Pirata+One&display=swap');
+
+  :root {
+    --gold: #d4af37;
+    --bone: #e8dcc4;
+    --dark: #1a1612;
+    --darker: #0f0d0b;
+    --card: #2a241f;
+    --border: #6b5d4f;
+    --rust: #8b4513;
+    --green: #39ff14;
+    --red: #ff2222;
+    --blue: #4488ff;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: linear-gradient(135deg, #1a1612 0%, #2d1f1a 35%, #1a1612 70%, #0f0d0b 100%);
+    font-family: 'Cinzel', serif;
+    color: var(--bone);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── ARCADE HEADER ── */
+  .arcade-header {
+    text-align: center;
+    padding: 2rem 1rem 1rem;
+    border-bottom: 2px solid var(--border);
+    background: linear-gradient(135deg, #2a241f 0%, #3a2820 50%, #2a241f 100%);
+  }
+  .arcade-title {
+    font-family: 'Pirata One', cursive;
+    font-size: clamp(2rem, 6vw, 4rem);
+    color: var(--gold);
+    text-shadow: 0 0 30px rgba(212,175,55,0.5);
+    letter-spacing: 4px;
+  }
+  .arcade-subtitle {
+    color: var(--bone);
+    opacity: 0.7;
+    font-size: 0.9rem;
+    margin-top: 0.3rem;
+    letter-spacing: 2px;
+  }
+
+  /* ── GAME SELECTOR ── */
+  .game-selector {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    padding: 1.5rem 1rem;
+    flex-wrap: wrap;
+    background: rgba(0,0,0,0.3);
+    border-bottom: 1px solid var(--border);
+  }
+  .game-tab {
+    background: var(--card);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 0.75rem 1.5rem;
+    color: var(--bone);
+    cursor: pointer;
+    font-family: 'Cinzel', serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .game-tab:hover {
+    border-color: var(--gold);
+    color: var(--gold);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(212,175,55,0.3);
+  }
+  .game-tab.active {
+    border-color: var(--gold);
+    background: linear-gradient(135deg, rgba(212,175,55,0.2), rgba(139,111,71,0.2));
+    color: var(--gold);
+    box-shadow: 0 0 20px rgba(212,175,55,0.3);
+  }
+
+  /* ── GAME PANELS ── */
+  .game-panel { display: none; }
+  .game-panel.active { display: block; }
+
+  .game-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1.5rem 1rem;
+    gap: 1rem;
+  }
+
+  .score-bar {
+    display: flex;
+    gap: 2rem;
+    align-items: center;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0.6rem 2rem;
+    font-size: 1.1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .score-bar span { color: var(--gold); font-weight: 700; }
+  .score-label { color: var(--bone); opacity: 0.7; font-size: 0.8rem; }
+
+  canvas {
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    background: #0a0806;
+    display: block;
+    max-width: 100%;
+  }
+
+  .game-controls {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .btn-game {
+    background: linear-gradient(135deg, var(--rust), #6b3410);
+    border: 2px solid var(--gold);
+    border-radius: 8px;
+    color: var(--gold);
+    padding: 0.6rem 1.5rem;
+    font-family: 'Cinzel', serif;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    letter-spacing: 1px;
+  }
+  .btn-game:hover {
+    background: linear-gradient(135deg, #a85015, var(--rust));
+    box-shadow: 0 0 15px rgba(212,175,55,0.4);
+    transform: translateY(-2px);
+  }
+  .btn-game.danger {
+    background: linear-gradient(135deg, #660000, #330000);
+    border-color: var(--red);
+    color: var(--red);
+  }
+
+  .instructions {
+    max-width: 600px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.5rem;
+    font-size: 0.82rem;
+    color: var(--bone);
+    opacity: 0.8;
+    line-height: 1.6;
+    text-align: center;
+  }
+  .instructions strong { color: var(--gold); }
+
+  .game-over-msg {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0,0,0,0.85);
+    border: 2px solid var(--gold);
+    border-radius: 16px;
+    padding: 2rem 3rem;
+    text-align: center;
+    pointer-events: none;
+    display: none;
+    z-index: 10;
+  }
+  .game-over-msg.show { display: block; }
+  .game-over-msg h2 { font-family: 'Pirata One', cursive; color: var(--gold); font-size: 2rem; margin-bottom: 0.5rem; }
+  .game-over-msg p { color: var(--bone); margin: 0.25rem 0; }
+
+  .canvas-wrap { position: relative; }
+
+  /* Mobile d-pad */
+  .dpad {
+    display: none;
+    gap: 0.5rem;
+    flex-direction: column;
+    align-items: center;
+  }
+  .dpad-row { display: flex; gap: 0.5rem; }
+  .dpad-btn {
+    width: 52px; height: 52px;
+    background: var(--card);
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    color: var(--gold);
+    font-size: 1.4rem;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+    transition: background 0.1s;
+  }
+  .dpad-btn:active { background: rgba(212,175,55,0.2); }
+  @media (max-width: 600px) { .dpad { display: flex; } }
+
+  /* ── LEADERBOARD ── */
+  .leaderboard {
+    max-width: 400px;
+    width: 100%;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem;
+  }
+  .leaderboard h3 { color: var(--gold); text-align: center; margin-bottom: 0.75rem; font-size: 1rem; }
+  .lb-row { display: flex; justify-content: space-between; padding: 0.3rem 0.5rem; border-radius: 6px; font-size: 0.85rem; }
+  .lb-row:nth-child(even) { background: rgba(255,255,255,0.04); }
+  .lb-row .lb-rank { color: var(--gold); width: 30px; }
+  .lb-row .lb-name { flex: 1; color: var(--bone); }
+  .lb-row .lb-score { color: var(--gold); font-weight: 700; }
+</style>
+</head>
+<body>
+
+<div class="arcade-header">
+  <div class="arcade-title">💀 Skull Games Arcade 💀</div>
+  <div class="arcade-subtitle">Four games. One skeleton. Infinite death.</div>
+</div>
+
+<div class="game-selector">
+  <button class="game-tab active" onclick="showGame('runner')">💀 Skull Runner</button>
+  <button class="game-tab" onclick="showGame('snake')">🦴 Skull Snake</button>
+  <button class="game-tab" onclick="showGame('slither')">🌐 Skull Slither</button>
+  <button class="game-tab" onclick="showGame('shooter')">🔫 Skull Shooter</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!--  GAME 1: SKULL RUNNER                         -->
+<!-- ═══════════════════════════════════════════════ -->
+<div id="panel-runner" class="game-panel active">
+  <div class="game-wrap">
+    <div class="score-bar">
+      <div><div class="score-label">SCORE</div><span id="runner-score">0</span></div>
+      <div><div class="score-label">BEST</div><span id="runner-best">0</span></div>
+      <div><div class="score-label">SPEED</div><span id="runner-speed">1x</span></div>
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="runner-canvas" width="700" height="200"></canvas>
+      <div class="game-over-msg" id="runner-over">
+        <h2>💀 You Died!</h2>
+        <p id="runner-final"></p>
+        <p style="margin-top:0.5rem;opacity:0.6;font-size:0.8rem">Press SPACE or tap to restart</p>
+      </div>
+    </div>
+    <div class="game-controls">
+      <button class="btn-game" onclick="runnerStart()">▶ Start / Restart</button>
+    </div>
+    <div class="instructions">
+      <strong>SPACE / TAP</strong> to jump &nbsp;|&nbsp; <strong>DOWN ARROW / Double-tap</strong> to duck &nbsp;|&nbsp;
+      Dodge bones, gravestones &amp; bat swarms. Speed increases every 200 points!
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!--  GAME 2: SKULL SNAKE                          -->
+<!-- ═══════════════════════════════════════════════ -->
+<div id="panel-snake" class="game-panel">
+  <div class="game-wrap">
+    <div class="score-bar">
+      <div><div class="score-label">SCORE</div><span id="snake-score">0</span></div>
+      <div><div class="score-label">BEST</div><span id="snake-best">0</span></div>
+      <div><div class="score-label">LENGTH</div><span id="snake-length">1</span></div>
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="snake-canvas" width="500" height="500"></canvas>
+      <div class="game-over-msg" id="snake-over">
+        <h2>💀 You Died!</h2>
+        <p id="snake-final"></p>
+        <p style="margin-top:0.5rem;opacity:0.6;font-size:0.8rem">Press SPACE or tap Start to restart</p>
+      </div>
+    </div>
+    <div class="dpad">
+      <div class="dpad-row"><div class="dpad-btn" id="dpad-up" ontouchstart="snakeDir(0,-1)">▲</div></div>
+      <div class="dpad-row">
+        <div class="dpad-btn" ontouchstart="snakeDir(-1,0)">◀</div>
+        <div class="dpad-btn" ontouchstart="snakeDir(0,1)">▼</div>
+        <div class="dpad-btn" ontouchstart="snakeDir(1,0)">▶</div>
+      </div>
+    </div>
+    <div class="game-controls">
+      <button class="btn-game" onclick="snakeStart()">▶ Start / Restart</button>
+    </div>
+    <div class="instructions">
+      <strong>Arrow Keys / WASD</strong> to steer &nbsp;|&nbsp; Eat 🦴 bones to grow &nbsp;|&nbsp;
+      Collect 💎 gems for bonus points &nbsp;|&nbsp; Don't hit the walls or yourself!
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!--  GAME 3: SKULL SLITHER                        -->
+<!-- ═══════════════════════════════════════════════ -->
+<div id="panel-slither" class="game-panel">
+  <div class="game-wrap">
+    <div class="score-bar">
+      <div><div class="score-label">SCORE</div><span id="slither-score">0</span></div>
+      <div><div class="score-label">BEST</div><span id="slither-best">0</span></div>
+      <div><div class="score-label">SIZE</div><span id="slither-size">3</span></div>
+      <div><div class="score-label">KILLS</div><span id="slither-kills">0</span></div>
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="slither-canvas" width="700" height="500"></canvas>
+      <div class="game-over-msg" id="slither-over">
+        <h2>💀 Devoured!</h2>
+        <p id="slither-final"></p>
+        <p style="margin-top:0.5rem;opacity:0.6;font-size:0.8rem">Tap Start to respawn</p>
+      </div>
+    </div>
+    <div class="game-controls">
+      <button class="btn-game" onclick="slitherStart()">▶ Start / Restart</button>
+    </div>
+    <div class="instructions">
+      <strong>Mouse / touch</strong> to steer your skull snake &nbsp;|&nbsp;
+      Eat 🟡 orbs to grow &nbsp;|&nbsp; <strong>Boost</strong>: hold left mouse / long press &nbsp;|&nbsp;
+      Cut off AI snakes — they die if they hit your body. You die if you hit theirs!
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!--  GAME 4: SKULL SHOOTER                        -->
+<!-- ═══════════════════════════════════════════════ -->
+<div id="panel-shooter" class="game-panel">
+  <div class="game-wrap">
+    <div class="score-bar">
+      <div><div class="score-label">SCORE</div><span id="shooter-score">0</span></div>
+      <div><div class="score-label">BEST</div><span id="shooter-best">0</span></div>
+      <div><div class="score-label">WAVE</div><span id="shooter-wave">1</span></div>
+      <div><div class="score-label">LIVES</div><span id="shooter-lives">❤️❤️❤️</span></div>
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="shooter-canvas" width="600" height="520"></canvas>
+      <div class="game-over-msg" id="shooter-over">
+        <h2>💀 Game Over!</h2>
+        <p id="shooter-final"></p>
+        <p style="margin-top:0.5rem;opacity:0.6;font-size:0.8rem">Press SPACE or tap Start</p>
+      </div>
+    </div>
+    <div class="game-controls">
+      <button class="btn-game" onclick="shooterStart()">▶ Start / Restart</button>
+    </div>
+    <div class="instructions">
+      <strong>← →</strong> move &nbsp;|&nbsp; <strong>SPACE</strong> shoot &nbsp;|&nbsp;
+      On mobile: <strong>tap left/right halves</strong> to move, <strong>tap center</strong> to shoot &nbsp;|&nbsp;
+      Survive waves of zombie skulls! Watch for boss skulls 💀 every 5 waves.
+    </div>
+  </div>
+</div>
+
+
+<script>
+/* ═══════════════════════════════════════════════════════════ */
+/*  SHARED UTILITIES                                          */
+/* ═══════════════════════════════════════════════════════════ */
+function showGame(id) {
+  document.querySelectorAll('.game-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.game-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  event.currentTarget.classList.add('active');
+  // Pause all games when switching
+  runnerPause(); snakePause(); slitherPause(); shooterPause();
+}
+
+function lsGet(k, def) { try { return JSON.parse(localStorage.getItem(k)) ?? def; } catch { return def; } }
+function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+
+/* ═══════════════════════════════════════════════════════════ */
+/*  GAME 1: SKULL RUNNER                                      */
+/* ═══════════════════════════════════════════════════════════ */
+(function() {
+  const C = document.getElementById('runner-canvas');
+  const ctx = C.getContext('2d');
+  const W = C.width, H = C.height;
+  const GY = H - 40; // ground y
+
+  let state = 'idle', score = 0, best = lsGet('runner-best', 0), raf;
+  let speed, obstacles, skull, tick, duckTimer;
+
+  const SKULL_W = 32, SKULL_H = 32;
+  const DUCK_H = 20;
+
+  function Skull() {
+    return { x: 80, y: GY - SKULL_H, vy: 0, jumping: false, ducking: false, dead: false };
+  }
+
+  function obsTypes() {
+    const t = Math.random();
+    if (t < 0.4) return { w: 20, h: 36, label: '🪦', yOff: 0 }; // gravestone
+    if (t < 0.7) return { w: 40, h: 18, label: '🦴', yOff: 10 }; // bone low
+    return { w: 50, h: 22, label: '🦇', yOff: -38, flying: true }; // bat high
+  }
+
+  function reset() {
+    score = 0; speed = 5; tick = 0; duckTimer = 0;
+    skull = Skull();
+    obstacles = [];
+    document.getElementById('runner-over').classList.remove('show');
+    document.getElementById('runner-score').textContent = 0;
+  }
+
+  function jump() {
+    if (skull.dead) { runnerStart(); return; }
+    if (!skull.jumping && !skull.ducking) { skull.vy = -12; skull.jumping = true; }
+  }
+
+  function duck(on) {
+    if (!skull.jumping) skull.ducking = on;
+  }
+
+  function spawnObs() {
+    const gap = Math.max(300, 700 - score * 0.3);
+    if (obstacles.length === 0 || obstacles[obstacles.length-1].x < W - gap) {
+      const o = obsTypes();
+      const baseY = GY - o.h + (o.yOff || 0);
+      obstacles.push({ x: W + 20, y: baseY, ...o });
+    }
+  }
+
+  function update() {
+    tick++;
+    score += 0.1;
+    speed = 5 + Math.floor(score / 200) * 0.8;
+    document.getElementById('runner-score').textContent = Math.floor(score);
+    document.getElementById('runner-speed').textContent = (speed / 5).toFixed(1) + 'x';
+
+    // Skull physics
+    if (!skull.dead) {
+      skull.vy += 0.7; // gravity
+      skull.y += skull.vy;
+      if (skull.y >= GY - (skull.ducking ? DUCK_H : SKULL_H)) {
+        skull.y = GY - (skull.ducking ? DUCK_H : SKULL_H);
+        skull.vy = 0;
+        skull.jumping = false;
+      }
+    }
+
+    // Obstacles
+    spawnObs();
+    obstacles.forEach(o => o.x -= speed);
+    obstacles = obstacles.filter(o => o.x > -60);
+
+    // Collision
+    const sw = SKULL_W - 8, sh = skull.ducking ? DUCK_H : SKULL_H - 4;
+    const sx = skull.x + 4;
+    for (const o of obstacles) {
+      if (sx < o.x + o.w - 4 && sx + sw > o.x + 4 &&
+          skull.y + 4 < o.y + o.h && skull.y + sh > o.y + 4) {
+        die(); return;
+      }
+    }
+
+    if (score > best) { best = Math.floor(score); lsSet('runner-best', best); document.getElementById('runner-best').textContent = best; }
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+
+    // Ground
+    ctx.fillStyle = '#3a2820';
+    ctx.fillRect(0, GY + 2, W, 4);
+    ctx.strokeStyle = '#6b5d4f';
+    ctx.lineWidth = 1;
+    // Ground dashes
+    for (let x = (-tick * speed) % 60; x < W; x += 60) {
+      ctx.fillStyle = '#4a3828';
+      ctx.fillRect(x, GY + 6, 40, 2);
+    }
+
+    // Score particles (star dust every 100pts)
+    if (Math.floor(score) % 100 === 0 && Math.floor(score) > 0 && tick % 3 === 0) {
+      ctx.fillStyle = '#d4af37';
+      ctx.font = '16px serif';
+      ctx.fillText('✨', 300 + Math.random()*100, 30 + Math.random()*40);
+    }
+
+    // Obstacles
+    obstacles.forEach(o => {
+      ctx.font = `${o.h + 4}px serif`;
+      ctx.fillText(o.label, o.x, o.y + o.h);
+    });
+
+    // Skull
+    const skH = skull.ducking ? DUCK_H : SKULL_H;
+    ctx.font = `${skH + 4}px serif`;
+    if (skull.dead) {
+      ctx.globalAlpha = 0.5;
+      ctx.fillText('💀', skull.x, skull.y + skH);
+      ctx.globalAlpha = 1;
+    } else {
+      ctx.fillText(skull.ducking ? '🪖' : '💀', skull.x, skull.y + skH);
+    }
+  }
+
+  function die() {
+    skull.dead = true;
+    document.getElementById('runner-final').textContent = `Score: ${Math.floor(score)} | Best: ${best}`;
+    document.getElementById('runner-over').classList.add('show');
+    cancelAnimationFrame(raf);
+    state = 'dead';
+  }
+
+  function loop() {
+    if (state !== 'running') return;
+    update(); draw();
+    raf = requestAnimationFrame(loop);
+  }
+
+  window.runnerStart = function() {
+    state = 'running';
+    reset();
+    cancelAnimationFrame(raf);
+    loop();
+  };
+  window.runnerPause = function() {
+    if (state === 'running') { state = 'paused'; cancelAnimationFrame(raf); }
+  };
+
+  // Controls
+  document.addEventListener('keydown', e => {
+    if (!document.getElementById('panel-runner').classList.contains('active')) return;
+    if (e.code === 'Space' || e.code === 'ArrowUp') { e.preventDefault(); if (state === 'idle' || state === 'dead') runnerStart(); else jump(); }
+    if (e.code === 'ArrowDown') { e.preventDefault(); duck(true); }
+  });
+  document.addEventListener('keyup', e => {
+    if (e.code === 'ArrowDown') duck(false);
+  });
+  C.addEventListener('touchstart', e => { e.preventDefault(); if (state === 'idle' || state === 'dead') runnerStart(); else jump(); });
+  C.addEventListener('touchend', e => { duck(false); });
+
+  // Draw idle screen
+  ctx.fillStyle = '#d4af37';
+  ctx.font = 'bold 20px Cinzel, serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('💀 SKULL RUNNER', W/2, H/2 - 20);
+  ctx.fillStyle = '#e8dcc4';
+  ctx.font = '14px Cinzel, serif';
+  ctx.fillText('Press START or SPACE to begin', W/2, H/2 + 10);
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#3a2820';
+  ctx.fillRect(0, GY + 2, W, 4);
+})();
+
+
+/* ═══════════════════════════════════════════════════════════ */
+/*  GAME 2: SKULL SNAKE                                       */
+/* ═══════════════════════════════════════════════════════════ */
+(function() {
+  const C = document.getElementById('snake-canvas');
+  const ctx = C.getContext('2d');
+  const SZ = 20, COLS = C.width / SZ, ROWS = C.height / SZ;
+
+  let state = 'idle', score = 0, best = lsGet('snake-best', 0), raf;
+  let snake, dir, nextDir, food, gem, gemTimer, tick, speed, interval;
+
+  function rnd(max) { return Math.floor(Math.random() * max); }
+
+  function randFood(exclude) {
+    let pos;
+    do { pos = { x: rnd(COLS), y: rnd(ROWS) }; }
+    while (exclude.some(s => s.x === pos.x && s.y === pos.y));
+    return pos;
+  }
+
+  function reset() {
+    score = 0; tick = 0; speed = 120; gemTimer = 0;
+    snake = [{ x: 10, y: 10 }, { x: 9, y: 10 }, { x: 8, y: 10 }];
+    dir = { x: 1, y: 0 }; nextDir = { x: 1, y: 0 };
+    food = randFood(snake);
+    gem = null;
+    document.getElementById('snake-over').classList.remove('show');
+    document.getElementById('snake-score').textContent = 0;
+    document.getElementById('snake-length').textContent = snake.length;
+    document.getElementById('snake-best').textContent = best;
+  }
+
+  function update() {
+    dir = nextDir;
+    const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
+
+    // Wall collision
+    if (head.x < 0 || head.x >= COLS || head.y < 0 || head.y >= ROWS) { die(); return; }
+    // Self collision
+    if (snake.some(s => s.x === head.x && s.y === head.y)) { die(); return; }
+
+    snake.unshift(head);
+
+    // Eat food
+    if (head.x === food.x && head.y === food.y) {
+      score += 10;
+      food = randFood(snake);
+      speed = Math.max(50, speed - 2);
+      if (Math.random() < 0.3 && !gem) { gem = randFood(snake); gemTimer = 80; }
+    } else if (gem && head.x === gem.x && head.y === gem.y) {
+      score += 50;
+      gem = null;
+    } else {
+      snake.pop();
+    }
+
+    tick++;
+    if (gem) { gemTimer--; if (gemTimer <= 0) gem = null; }
+
+    if (score > best) { best = score; lsSet('snake-best', best); }
+    document.getElementById('snake-score').textContent = score;
+    document.getElementById('snake-best').textContent = best;
+    document.getElementById('snake-length').textContent = snake.length;
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, C.width, C.height);
+
+    // Grid
+    ctx.strokeStyle = 'rgba(106,93,79,0.15)';
+    ctx.lineWidth = 0.5;
+    for (let x = 0; x <= COLS; x++) { ctx.beginPath(); ctx.moveTo(x*SZ,0); ctx.lineTo(x*SZ,C.height); ctx.stroke(); }
+    for (let y = 0; y <= ROWS; y++) { ctx.beginPath(); ctx.moveTo(0,y*SZ); ctx.lineTo(C.width,y*SZ); ctx.stroke(); }
+
+    // Snake body
+    snake.forEach((seg, i) => {
+      const isHead = i === 0;
+      if (isHead) {
+        ctx.font = `${SZ}px serif`;
+        ctx.fillText('💀', seg.x * SZ, seg.y * SZ + SZ);
+      } else {
+        const alpha = Math.max(0.3, 1 - i * 0.03);
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = i % 2 === 0 ? '#8b6f47' : '#6b5030';
+        ctx.beginPath();
+        ctx.roundRect(seg.x * SZ + 2, seg.y * SZ + 2, SZ - 4, SZ - 4, 4);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        // Bone pattern on body
+        ctx.fillStyle = 'rgba(232,220,196,0.4)';
+        ctx.font = `${SZ - 6}px serif`;
+        ctx.fillText('🦴', seg.x * SZ + 1, seg.y * SZ + SZ - 2);
+        ctx.globalAlpha = 1;
+      }
+    });
+
+    // Food
+    ctx.font = `${SZ + 4}px serif`;
+    ctx.fillText('🦴', food.x * SZ, food.y * SZ + SZ + 2);
+
+    // Gem
+    if (gem) {
+      const blink = gemTimer < 20 ? Math.floor(gemTimer / 3) % 2 : 1;
+      if (blink) { ctx.font = `${SZ + 2}px serif`; ctx.fillText('💎', gem.x * SZ, gem.y * SZ + SZ); }
+    }
+  }
+
+  function die() {
+    state = 'dead';
+    document.getElementById('snake-final').textContent = `Score: ${score} | Best: ${best}`;
+    document.getElementById('snake-over').classList.add('show');
+    clearInterval(interval);
+  }
+
+  function loop() {
+    if (state !== 'running') return;
+    update(); draw();
+    clearInterval(interval);
+    interval = setInterval(loop, speed);
+  }
+
+  window.snakeStart = function() {
+    state = 'running';
+    clearInterval(interval);
+    reset(); draw();
+    interval = setInterval(loop, speed);
+  };
+  window.snakePause = function() {
+    if (state === 'running') { state = 'paused'; clearInterval(interval); }
+  };
+
+  window.snakeDir = function(dx, dy) {
+    if (dx === -dir.x && dy === -dir.y) return;
+    nextDir = { x: dx, y: dy };
+  };
+
+  document.addEventListener('keydown', e => {
+    if (!document.getElementById('panel-snake').classList.contains('active')) return;
+    const map = { ArrowUp:[0,-1], ArrowDown:[0,1], ArrowLeft:[-1,0], ArrowRight:[1,0],
+                  w:[0,-1], s:[0,1], a:[-1,0], d:[1,0], W:[0,-1], S:[0,1], A:[-1,0], D:[1,0] };
+    const d = map[e.key];
+    if (d) { e.preventDefault(); snakeDir(d[0], d[1]); }
+    if (e.code === 'Space') { e.preventDefault(); if (state !== 'running') snakeStart(); }
+  });
+
+  // Idle
+  ctx.fillStyle = '#d4af37';
+  ctx.font = 'bold 20px Cinzel, serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('🦴 SKULL SNAKE', C.width/2, C.height/2 - 20);
+  ctx.fillStyle = '#e8dcc4';
+  ctx.font = '14px Cinzel, serif';
+  ctx.fillText('Press START to begin', C.width/2, C.height/2 + 10);
+  ctx.textAlign = 'left';
+})();
+
+
+/* ═══════════════════════════════════════════════════════════ */
+/*  GAME 3: SKULL SLITHER                                     */
+/* ═══════════════════════════════════════════════════════════ */
+(function() {
+  const C = document.getElementById('slither-canvas');
+  const ctx = C.getContext('2d');
+  const W = C.width, H = C.height;
+
+  let state = 'idle', score = 0, best = lsGet('slither-best', 0), kills = 0, raf;
+  let player, aiSnakes, orbs, mouseX, mouseY, boosting;
+
+  const ORBS = 35, AI_COUNT = 5;
+  const AI_NAMES = ['Bonezilla','Skullcrusher','Ribcage Rick','Dead Dave','GrimSlither'];
+  const AI_COLORS = ['#ff4444','#44aaff','#44ff88','#ffaa44','#cc44ff'];
+
+  function mkOrb() {
+    return { x: 20 + Math.random()*(W-40), y: 20 + Math.random()*(H-40),
+             r: 5 + Math.random()*4, color: `hsl(${Math.random()*360},80%,60%)`, val: 1 };
+  }
+
+  function mkAI(i) {
+    const angle = (i / AI_COUNT) * Math.PI * 2;
+    return {
+      segs: Array.from({length: 8}, (_, j) => ({
+        x: W/2 + Math.cos(angle) * 150 - j * 8 * Math.cos(angle),
+        y: H/2 + Math.sin(angle) * 150 - j * 8 * Math.sin(angle)
+      })),
+      angle: angle + Math.PI,
+      speed: 1.8,
+      color: AI_COLORS[i % AI_COLORS.length],
+      name: AI_NAMES[i % AI_NAMES.length],
+      score: 0,
+      dead: false,
+      targetAngle: Math.random() * Math.PI * 2,
+      changeTimer: 0,
+      aggro: Math.random() > 0.5
+    };
+  }
+
+  function reset() {
+    score = 0; kills = 0; boosting = false;
+    mouseX = W/2; mouseY = H/2;
+    player = {
+      segs: Array.from({length:6}, (_,i) => ({ x: W/2 - i*10, y: H/2 })),
+      angle: 0, speed: 2.2, dead: false, score: 0
+    };
+    aiSnakes = Array.from({length: AI_COUNT}, (_, i) => mkAI(i));
+    orbs = Array.from({length: ORBS}, mkOrb);
+    document.getElementById('slither-over').classList.remove('show');
+    document.getElementById('slither-score').textContent = 0;
+    document.getElementById('slither-kills').textContent = 0;
+    document.getElementById('slither-size').textContent = player.segs.length;
+    document.getElementById('slither-best').textContent = best;
+  }
+
+  function snakeRadius(segs) { return Math.min(12, 4 + segs.length * 0.15); }
+
+  function moveSnake(snake, tx, ty, spd) {
+    const head = snake.segs[0];
+    const dx = tx - head.x, dy = ty - head.y;
+    const dist = Math.sqrt(dx*dx+dy*dy);
+    if (dist < 1) return;
+    const angle = Math.atan2(dy, dx);
+    const turnRate = 0.12;
+    let da = angle - snake.angle;
+    while (da > Math.PI) da -= Math.PI*2;
+    while (da < -Math.PI) da += Math.PI*2;
+    snake.angle += Math.max(-turnRate, Math.min(turnRate, da));
+    const newHead = {
+      x: head.x + Math.cos(snake.angle) * spd,
+      y: head.y + Math.sin(snake.angle) * spd
+    };
+    // Wrap
+    newHead.x = ((newHead.x % W) + W) % W;
+    newHead.y = ((newHead.y % H) + H) % H;
+    snake.segs.unshift(newHead);
+    snake.segs.pop();
+  }
+
+  function aiDecide(ai) {
+    ai.changeTimer--;
+    if (ai.changeTimer <= 0) {
+      ai.changeTimer = 30 + Math.random() * 60;
+      if (ai.aggro && player.segs.length < ai.segs.length * 1.5) {
+        // Chase player
+        ai.target = { x: player.segs[0].x, y: player.segs[0].y };
+      } else {
+        // Chase nearest orb
+        let best = null, bestD = Infinity;
+        orbs.forEach(o => {
+          const d = Math.hypot(o.x - ai.segs[0].x, o.y - ai.segs[0].y);
+          if (d < bestD) { bestD = d; best = o; }
+        });
+        ai.target = best || { x: Math.random()*W, y: Math.random()*H };
+      }
+    }
+    if (ai.target) moveSnake(ai, ai.target.x, ai.target.y, ai.speed);
+  }
+
+  function eatOrbs(snake, isPlayer) {
+    const head = snake.segs[0];
+    const r = snakeRadius(snake.segs) + 8;
+    orbs = orbs.filter(o => {
+      const d = Math.hypot(o.x - head.x, o.y - head.y);
+      if (d < r) {
+        // Grow
+        snake.segs.push({...snake.segs[snake.segs.length-1]});
+        if (isPlayer) { score += o.val; if (score > best) { best = score; lsSet('slither-best', best); } }
+        else snake.score += o.val;
+        orbs.push(mkOrb());
+        return false;
+      }
+      return true;
+    });
+  }
+
+  function checkCollisions() {
+    if (player.dead) return;
+    const ph = player.segs[0];
+    const pr = snakeRadius(player.segs);
+    // Player vs AI bodies
+    for (const ai of aiSnakes) {
+      if (ai.dead) continue;
+      const ar = snakeRadius(ai.segs);
+      // Player head vs AI body (skip first 3 segs)
+      for (let i = 3; i < ai.segs.length; i++) {
+        if (Math.hypot(ph.x - ai.segs[i].x, ph.y - ai.segs[i].y) < pr + ar) {
+          playerDie(); return;
+        }
+      }
+      // AI head vs player body
+      const ah = ai.segs[0];
+      for (let i = 3; i < player.segs.length; i++) {
+        if (Math.hypot(ah.x - player.segs[i].x, ah.y - player.segs[i].y) < ar + pr) {
+          // AI dies, drop orbs
+          aiDie(ai); break;
+        }
+      }
+      // AI vs AI
+      for (const ai2 of aiSnakes) {
+        if (ai2 === ai || ai2.dead || ai.dead) continue;
+        const r2 = snakeRadius(ai2.segs);
+        for (let i = 3; i < ai2.segs.length; i++) {
+          if (Math.hypot(ah.x - ai2.segs[i].x, ah.y - ai2.segs[i].y) < ar + r2) {
+            aiDie(ai); break;
+          }
+        }
+      }
+    }
+  }
+
+  function aiDie(ai) {
+    // Drop orbs
+    ai.segs.forEach((s, i) => {
+      if (i % 3 === 0) orbs.push({ x: s.x, y: s.y, r: 6, color: ai.color, val: 2 });
+    });
+    ai.dead = true;
+    kills++;
+    document.getElementById('slither-kills').textContent = kills;
+    // Respawn after delay
+    setTimeout(() => {
+      const idx = aiSnakes.indexOf(ai);
+      if (idx >= 0) aiSnakes[idx] = mkAI(idx);
+    }, 3000);
+  }
+
+  function playerDie() {
+    player.dead = true;
+    document.getElementById('slither-final').textContent = `Score: ${score} | Best: ${best} | Kills: ${kills}`;
+    document.getElementById('slither-over').classList.add('show');
+    state = 'dead';
+    cancelAnimationFrame(raf);
+  }
+
+  function update() {
+    if (player.dead) return;
+    // Move player toward mouse
+    const spd = boosting ? player.speed * 1.8 : player.speed;
+    moveSnake(player, mouseX, mouseY, spd);
+    if (boosting && player.segs.length > 6 && Math.random() < 0.3) {
+      player.segs.pop();
+      orbs.push({ x: player.segs[player.segs.length-1].x, y: player.segs[player.segs.length-1].y, r: 4, color: '#d4af37', val: 0 });
+    }
+    eatOrbs(player, true);
+
+    // AI
+    aiSnakes.forEach(ai => { if (!ai.dead) { aiDecide(ai); eatOrbs(ai, false); } });
+
+    checkCollisions();
+
+    document.getElementById('slither-score').textContent = score;
+    document.getElementById('slither-size').textContent = player.segs.length;
+    document.getElementById('slither-best').textContent = best;
+  }
+
+  function drawSnake(segs, color, isPlayer) {
+    if (segs.length < 2) return;
+    const r = snakeRadius(segs);
+    // Body
+    for (let i = segs.length - 1; i >= 1; i--) {
+      const alpha = Math.max(0.4, 1 - i / segs.length * 0.5);
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(segs[i].x, segs[i].y, r * 0.9, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    // Head
+    ctx.font = `${r * 2 + 8}px serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText(isPlayer ? '💀' : '☠️', segs[0].x, segs[0].y + r);
+    ctx.textAlign = 'left';
+  }
+
+  function draw() {
+    // Background
+    ctx.fillStyle = '#080604';
+    ctx.fillRect(0, 0, W, H);
+
+    // Grid dots
+    ctx.fillStyle = 'rgba(106,93,79,0.2)';
+    for (let x = 20; x < W; x += 40) for (let y = 20; y < H; y += 40) {
+      ctx.beginPath(); ctx.arc(x, y, 1, 0, Math.PI*2); ctx.fill();
+    }
+
+    // Orbs
+    orbs.forEach(o => {
+      ctx.fillStyle = o.color;
+      ctx.globalAlpha = 0.85;
+      ctx.beginPath(); ctx.arc(o.x, o.y, o.r, 0, Math.PI*2); ctx.fill();
+      ctx.globalAlpha = 0.3;
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(o.x - o.r*0.3, o.y - o.r*0.3, o.r*0.35, 0, Math.PI*2); ctx.fill();
+      ctx.globalAlpha = 1;
+    });
+
+    // AI snakes
+    aiSnakes.forEach(ai => { if (!ai.dead) drawSnake(ai.segs, ai.color, false); });
+
+    // Player
+    if (!player.dead) drawSnake(player.segs, '#d4af37', true);
+
+    // Boost indicator
+    if (boosting) {
+      ctx.fillStyle = 'rgba(212,175,55,0.15)';
+      ctx.beginPath(); ctx.arc(player.segs[0].x, player.segs[0].y, 30, 0, Math.PI*2); ctx.fill();
+    }
+  }
+
+  function loop() {
+    if (state !== 'running') return;
+    update(); draw();
+    raf = requestAnimationFrame(loop);
+  }
+
+  window.slitherStart = function() {
+    state = 'running'; reset();
+    cancelAnimationFrame(raf); loop();
+  };
+  window.slitherPause = function() {
+    if (state === 'running') { state = 'paused'; cancelAnimationFrame(raf); }
+  };
+
+  C.addEventListener('mousemove', e => {
+    const rect = C.getBoundingClientRect();
+    const scaleX = W / rect.width, scaleY = H / rect.height;
+    mouseX = (e.clientX - rect.left) * scaleX;
+    mouseY = (e.clientY - rect.top) * scaleY;
+  });
+  C.addEventListener('touchmove', e => {
+    e.preventDefault();
+    const rect = C.getBoundingClientRect();
+    const scaleX = W / rect.width, scaleY = H / rect.height;
+    mouseX = (e.touches[0].clientX - rect.left) * scaleX;
+    mouseY = (e.touches[0].clientY - rect.top) * scaleY;
+  }, { passive: false });
+  C.addEventListener('mousedown', () => boosting = true);
+  C.addEventListener('mouseup', () => boosting = false);
+  C.addEventListener('touchstart', e => { e.preventDefault(); boosting = true; });
+  C.addEventListener('touchend', () => boosting = false);
+
+  // Idle
+  ctx.fillStyle = '#080604'; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle = '#d4af37'; ctx.font = 'bold 20px Cinzel,serif'; ctx.textAlign='center';
+  ctx.fillText('🌐 SKULL SLITHER', W/2, H/2 - 20);
+  ctx.fillStyle = '#e8dcc4'; ctx.font = '14px Cinzel,serif';
+  ctx.fillText('Move mouse to steer · Hold click to boost', W/2, H/2+10);
+  ctx.textAlign = 'left';
+})();
+
+
+/* ═══════════════════════════════════════════════════════════ */
+/*  GAME 4: SKULL SHOOTER                                     */
+/* ═══════════════════════════════════════════════════════════ */
+(function() {
+  const C = document.getElementById('shooter-canvas');
+  const ctx = C.getContext('2d');
+  const W = C.width, H = C.height;
+
+  let state = 'idle', score = 0, best = lsGet('shooter-best', 0), lives = 3, wave = 1, raf;
+  let player, bullets, enemies, particles, stars, invincible, spawnTimer, waveClearing;
+  const KEYS = {};
+
+  function mkStars() { return Array.from({length:80}, () => ({ x:Math.random()*W, y:Math.random()*H, r:Math.random()*1.5, twinkle:Math.random()*Math.PI*2 })); }
+
+  function reset() {
+    score = 0; lives = 3; wave = 1; invincible = 0; spawnTimer = 60; waveClearing = false;
+    player = { x: W/2, y: H - 60, w: 36, h: 36, speed: 4, shootCooldown: 0, shieldTimer: 0 };
+    bullets = []; enemies = []; particles = []; stars = mkStars();
+    document.getElementById('shooter-over').classList.remove('show');
+    updateHUD(); spawnWave(1);
+  }
+
+  function updateHUD() {
+    document.getElementById('shooter-score').textContent = score;
+    document.getElementById('shooter-wave').textContent = wave;
+    document.getElementById('shooter-best').textContent = best;
+    document.getElementById('shooter-lives').textContent = '❤️'.repeat(Math.max(0, lives));
+  }
+
+  function spawnWave(w) {
+    const isBossWave = w % 5 === 0;
+    const count = isBossWave ? 1 : Math.min(4 + w, 14);
+    if (isBossWave) {
+      enemies.push({ x: W/2, y: 60, w: 64, h: 64, hp: 15 + w*2, maxHp: 15+w*2,
+        vx: 1.5, vy: 0, type: 'boss', score: 500 + w*50, shootTimer: 40, shootCooldown: 40 });
+    } else {
+      for (let i = 0; i < count; i++) {
+        const col = i % 7, row = Math.floor(i / 7);
+        const types = ['basic','zigzag','diver','shooter'];
+        const t = w <= 2 ? 'basic' : types[Math.floor(Math.random()*Math.min(w, types.length))];
+        enemies.push({
+          x: 60 + col * 85, y: 40 + row * 55,
+          w: 32, h: 32, hp: 1 + Math.floor(w/4), maxHp: 1 + Math.floor(w/4),
+          vx: (0.5 + w * 0.1) * (Math.random() > 0.5 ? 1 : -1),
+          vy: 0.3 + w * 0.05, type: t, score: 10 + w * 5,
+          phase: Math.random() * Math.PI * 2, shootTimer: Math.floor(Math.random()*80),
+          shootCooldown: 60 + Math.floor(Math.random()*40)
+        });
+      }
+    }
+  }
+
+  function firePlayerBullet() {
+    if (player.shootCooldown > 0) return;
+    bullets.push({ x: player.x + player.w/2 - 3, y: player.y, w: 6, h: 14, vy: -9, owner: 'player', color: '#d4af37' });
+    player.shootCooldown = 12;
+  }
+
+  function addParticles(x, y, color, count, speed) {
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const spd = (1 + Math.random() * 3) * (speed || 1);
+      particles.push({ x, y, vx: Math.cos(angle)*spd, vy: Math.sin(angle)*spd,
+        life: 30 + Math.random()*20, maxLife: 50, color, r: 2+Math.random()*3, text: null });
+    }
+  }
+
+  function addTextParticle(x, y, text, color) {
+    particles.push({ x, y, vx: (Math.random()-0.5)*1.5, vy: -1.5 - Math.random(),
+      life: 50, maxLife: 50, color, r: 0, text });
+  }
+
+  function update() {
+    // Player movement
+    if ((KEYS['ArrowLeft'] || KEYS['a'] || KEYS['A']) && player.x > 0) player.x -= player.speed;
+    if ((KEYS['ArrowRight'] || KEYS['d'] || KEYS['D']) && player.x + player.w < W) player.x += player.speed;
+    if (KEYS[' '] || KEYS['Space']) firePlayerBullet();
+    if (player.shootCooldown > 0) player.shootCooldown--;
+    if (invincible > 0) invincible--;
+
+    // Stars twinkle
+    stars.forEach(s => { s.twinkle += 0.03; s.y += 0.2; if (s.y > H) s.y = 0; });
+
+    // Enemies
+    enemies.forEach(e => {
+      e.phase += 0.05;
+      if (e.type === 'basic' || e.type === 'shooter') {
+        e.x += e.vx; e.y += e.vy;
+        if (e.x < 20 || e.x + e.w > W - 20) e.vx *= -1;
+      } else if (e.type === 'zigzag') {
+        e.x += e.vx; e.y += e.vy + Math.sin(e.phase) * 1.5;
+        if (e.x < 20 || e.x + e.w > W - 20) e.vx *= -1;
+      } else if (e.type === 'diver') {
+        e.x += Math.sin(e.phase * 0.5) * 2;
+        e.y += 1.5 + Math.sin(e.phase) * 0.5;
+      } else if (e.type === 'boss') {
+        e.x += e.vx; if (e.x < 40 || e.x + e.w > W - 40) e.vx *= -1;
+        e.y = 70 + Math.sin(e.phase * 0.4) * 20;
+        e.shootTimer--;
+        if (e.shootTimer <= 0) {
+          e.shootTimer = e.shootCooldown;
+          // Spread shot
+          [-0.3, 0, 0.3].forEach(ang => {
+            bullets.push({ x: e.x+e.w/2, y: e.y+e.h, w:8, h:8, vx: Math.sin(ang)*3, vy: 3.5 + Math.cos(ang)*1, owner:'enemy', color:'#ff4444' });
+          });
+        }
+      }
+
+      if (e.type === 'shooter') {
+        e.shootTimer--;
+        if (e.shootTimer <= 0) {
+          e.shootTimer = e.shootCooldown;
+          bullets.push({ x: e.x+e.w/2-3, y: e.y+e.h, w:6, h:10, vx:0, vy:4, owner:'enemy', color:'#ff6644' });
+        }
+      }
+
+      // Enemy reaches bottom
+      if (e.y + e.h > H - 10) {
+        if (invincible === 0) { lives--; invincible = 90; updateHUD(); }
+        e.y = 40;
+        if (lives <= 0) { die(); return; }
+      }
+    });
+
+    // Bullets
+    bullets.forEach(b => { b.x += (b.vx||0); b.y += b.vy; });
+    bullets = bullets.filter(b => b.y > -20 && b.y < H + 20 && b.x > -20 && b.x < W + 20);
+
+    // Bullet vs enemy
+    bullets = bullets.filter(b => {
+      if (b.owner !== 'player') return true;
+      for (const e of enemies) {
+        if (b.x < e.x+e.w && b.x+b.w > e.x && b.y < e.y+e.h && b.y+b.h > e.y) {
+          e.hp--;
+          addParticles(b.x, b.y, '#d4af37', 4);
+          if (e.hp <= 0) {
+            score += e.score; if (score > best) { best = score; lsSet('shooter-best', best); }
+            addParticles(e.x+e.w/2, e.y+e.h/2, e.type==='boss'?'#ff4444':'#ff8800', e.type==='boss'?20:8);
+            addTextParticle(e.x+e.w/2, e.y, '+' + e.score, '#d4af37');
+            enemies = enemies.filter(x => x !== e);
+          }
+          updateHUD();
+          return false;
+        }
+      }
+      return true;
+    });
+
+    // Enemy bullets vs player
+    if (invincible === 0) {
+      bullets = bullets.filter(b => {
+        if (b.owner !== 'enemy') return true;
+        if (b.x < player.x+player.w && b.x+b.w > player.x && b.y < player.y+player.h && b.y+b.h > player.y) {
+          lives--; invincible = 90; addParticles(player.x+player.w/2, player.y, '#ff4444', 12);
+          updateHUD(); if (lives <= 0) { die(); } return false;
+        }
+        return true;
+      });
+    }
+
+    // Particles
+    particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += 0.05; p.life--; });
+    particles = particles.filter(p => p.life > 0);
+
+    // Wave clear
+    if (enemies.length === 0 && !waveClearing) {
+      waveClearing = true;
+      addTextParticle(W/2 - 60, H/2, `WAVE ${wave} CLEAR! +${wave*50}`, '#39ff14');
+      score += wave * 50; updateHUD();
+      setTimeout(() => { wave++; spawnWave(wave); waveClearing = false; }, 1800);
+    }
+  }
+
+  function draw() {
+    ctx.fillStyle = '#04040a'; ctx.fillRect(0, 0, W, H);
+
+    // Stars
+    stars.forEach(s => {
+      const a = 0.4 + Math.sin(s.twinkle) * 0.4;
+      ctx.globalAlpha = a; ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2); ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+
+    // Player
+    if (state === 'running') {
+      const blink = invincible > 0 ? Math.floor(invincible / 6) % 2 : 1;
+      if (blink) {
+        ctx.font = `${player.h}px serif`;
+        ctx.fillText('💀', player.x, player.y + player.h);
+        // Engine glow
+        ctx.fillStyle = 'rgba(212,175,55,0.3)';
+        ctx.beginPath(); ctx.arc(player.x + player.w/2, player.y + player.h + 4, 8 + Math.random()*4, 0, Math.PI*2); ctx.fill();
+      }
+    }
+
+    // Enemies
+    enemies.forEach(e => {
+      ctx.font = `${e.h}px serif`;
+      ctx.fillText(e.type === 'boss' ? '💀' : '☠️', e.x, e.y + e.h);
+      // HP bar for boss
+      if (e.type === 'boss' && e.maxHp > 1) {
+        const bw = 80, bh = 8;
+        const bx = e.x + e.w/2 - bw/2, by = e.y - 16;
+        ctx.fillStyle = '#330000'; ctx.fillRect(bx, by, bw, bh);
+        ctx.fillStyle = '#ff4444'; ctx.fillRect(bx, by, bw * (e.hp / e.maxHp), bh);
+        ctx.strokeStyle = '#ff8888'; ctx.lineWidth = 1; ctx.strokeRect(bx, by, bw, bh);
+      }
+    });
+
+    // Bullets
+    bullets.forEach(b => {
+      ctx.fillStyle = b.color;
+      if (b.owner === 'player') {
+        ctx.shadowBlur = 8; ctx.shadowColor = '#d4af37';
+        ctx.fillRect(b.x, b.y, b.w, b.h);
+        ctx.shadowBlur = 0;
+      } else {
+        ctx.globalAlpha = 0.9;
+        ctx.beginPath(); ctx.arc(b.x + b.w/2, b.y + b.h/2, b.w/2+1, 0, Math.PI*2); ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    });
+
+    // Particles
+    particles.forEach(p => {
+      const a = p.life / p.maxLife;
+      ctx.globalAlpha = a;
+      if (p.text) {
+        ctx.fillStyle = p.color; ctx.font = 'bold 14px Cinzel,serif'; ctx.textAlign='center';
+        ctx.fillText(p.text, p.x, p.y);
+        ctx.textAlign = 'left';
+      } else {
+        ctx.fillStyle = p.color;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    });
+
+    // Wave banner
+    if (waveClearing) {
+      ctx.fillStyle = 'rgba(57,255,20,0.15)';
+      ctx.fillRect(0, H/2 - 30, W, 60);
+      ctx.fillStyle = '#39ff14'; ctx.font = 'bold 28px Pirata One,cursive'; ctx.textAlign='center';
+      ctx.fillText(`💀 WAVE ${wave-1} CLEARED! 💀`, W/2, H/2+8);
+      ctx.textAlign = 'left';
+    }
+  }
+
+  function die() {
+    state = 'dead'; cancelAnimationFrame(raf);
+    document.getElementById('shooter-final').textContent = `Score: ${score} | Wave: ${wave} | Best: ${best}`;
+    document.getElementById('shooter-over').classList.add('show');
+  }
+
+  function loop() {
+    if (state !== 'running') return;
+    update(); draw();
+    raf = requestAnimationFrame(loop);
+  }
+
+  window.shooterStart = function() {
+    state = 'running'; reset();
+    cancelAnimationFrame(raf); loop();
+  };
+  window.shooterPause = function() {
+    if (state === 'running') { state = 'paused'; cancelAnimationFrame(raf); }
+  };
+
+  document.addEventListener('keydown', e => {
+    if (!document.getElementById('panel-shooter').classList.contains('active')) return;
+    KEYS[e.key] = true; KEYS[e.code] = true;
+    if (e.code === 'Space') { e.preventDefault(); if (state !== 'running') shooterStart(); }
+  });
+  document.addEventListener('keyup', e => { KEYS[e.key] = false; KEYS[e.code] = false; });
+
+  // Touch controls
+  let touchMoveDir = 0;
+  C.addEventListener('touchstart', e => {
+    e.preventDefault();
+    const rect = C.getBoundingClientRect();
+    const tx = (e.touches[0].clientX - rect.left) * (W / rect.width);
+    if (state !== 'running') { shooterStart(); return; }
+    const third = W / 3;
+    if (tx < third) touchMoveDir = -1;
+    else if (tx > third * 2) touchMoveDir = 1;
+    else { firePlayerBullet(); touchMoveDir = 0; }
+  }, { passive: false });
+  C.addEventListener('touchend', () => touchMoveDir = 0);
+  C.addEventListener('touchmove', e => {
+    e.preventDefault();
+    const rect = C.getBoundingClientRect();
+    const tx = (e.touches[0].clientX - rect.left) * (W / rect.width);
+    const third = W / 3;
+    if (tx < third) touchMoveDir = -1;
+    else if (tx > third * 2) touchMoveDir = 1;
+    else touchMoveDir = 0;
+  }, { passive: false });
+
+  // Inject touch movement into update via key mock
+  setInterval(() => {
+    if (touchMoveDir === -1) { KEYS['ArrowLeft'] = true; KEYS['ArrowRight'] = false; }
+    else if (touchMoveDir === 1) { KEYS['ArrowRight'] = true; KEYS['ArrowLeft'] = false; }
+    else { KEYS['ArrowLeft'] = false; KEYS['ArrowRight'] = false; }
+  }, 16);
+
+  // Idle screen
+  ctx.fillStyle = '#04040a'; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle = '#d4af37'; ctx.font = 'bold 20px Cinzel,serif'; ctx.textAlign='center';
+  ctx.fillText('🔫 SKULL SHOOTER', W/2, H/2 - 20);
+  ctx.fillStyle = '#e8dcc4'; ctx.font = '14px Cinzel,serif';
+  ctx.fillText('← → to move · SPACE to shoot', W/2, H/2+10);
+  ctx.textAlign = 'left';
+})();
+</script>
+</body>
+</html>
