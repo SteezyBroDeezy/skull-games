@@ -60,7 +60,7 @@
 <body>
 <div class="arcade-header">
   <div class="arcade-title">Skull Games Arcade</div>
-  <div class="arcade-subtitle">Five games of skeletal mayhem!</div>
+  <div class="arcade-subtitle">Six games of skeletal mayhem!</div>
 </div>
 <div class="nickname-bar">
   <label>PLAYER:</label>
@@ -72,6 +72,7 @@
   <button class="game-tab" onclick="showGame('slither')">Slither</button>
   <button class="game-tab" onclick="showGame('shooter')">Shooter</button>
   <button class="game-tab" onclick="showGame('centipede')">Centipede</button>
+  <button class="game-tab" onclick="showGame('castle')">Castle</button>
 </div>
 
 <!-- GAME 1: SKULL RUNNER -->
@@ -131,7 +132,12 @@
     </div>
     <div class="game-controls"><button class="btn-game" onclick="slitherStart()">Start</button></div>
     <div class="instructions"><strong>Mouse</strong> steer | <strong>Click</strong> boost | 25 skull snakes!</div>
-    <div class="leaderboard"><h4>TOP 5</h4><ol id="lb-slither"></ol></div>
+    <div class="leaderboard">
+      <h4>EASY</h4><ol id="lb-slither-easy"></ol>
+      <h4>NORMAL</h4><ol id="lb-slither-normal"></ol>
+      <h4>HARD</h4><ol id="lb-slither-hard"></ol>
+      <h4>INSANE</h4><ol id="lb-slither-insane"></ol>
+    </div>
   </div>
 </div>
 
@@ -179,14 +185,41 @@
   </div>
 </div>
 
+<!-- GAME 6: SKULL CASTLE -->
+<div id="panel-castle" class="game-panel">
+  <div class="game-wrap">
+    <div class="score-bar">
+      <div><div class="score-label">GOLD</div><span id="castle-gold">0</span></div>
+      <div><div class="score-label">WAVE</div><span id="castle-wave">0</span></div>
+      <div><div class="score-label">CASTLE HP</div><span id="castle-hp">100/100</span></div>
+      <div><div class="score-label">KILLS</div><span id="castle-kills">0</span></div>
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="castle-canvas" width="800" height="450"></canvas>
+      <div class="game-over-msg" id="castle-over"><h2>Castle Fallen!</h2><p id="castle-final"></p><p class="funny" id="castle-funny"></p></div>
+    </div>
+    <div class="game-controls">
+      <button class="btn-game" onclick="castleStart()">Start Wave</button>
+      <button class="btn-game" onclick="castleShop()" style="background:#3a2a4a;">Shop</button>
+    </div>
+    <div class="instructions"><strong>Click</strong> to stun | <strong>Drag + Throw</strong> into castle to capture | Train your skeleton army!</div>
+    <div class="leaderboard"><h4>TOP 5</h4><ol id="lb-castle"></ol></div>
+  </div>
+</div>
+
 <script>
 /* SHARED */
 function showGame(id) {
   document.querySelectorAll('.game-panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.game-tab').forEach(t => t.classList.remove('active'));
   document.getElementById('panel-' + id).classList.add('active');
-  event.currentTarget.classList.add('active');
-  runnerPause(); snakePause(); slitherPause(); shooterPause(); centiPause();
+  if (event && event.currentTarget) event.currentTarget.classList.add('active');
+  try { runnerPause(); } catch(e) {}
+  try { snakePause(); } catch(e) {}
+  try { slitherPause(); } catch(e) {}
+  try { shooterPause(); } catch(e) {}
+  try { centiPause(); } catch(e) {}
+  try { castlePause(); } catch(e) {}
 }
 function lsGet(k, def) { try { return JSON.parse(localStorage.getItem(k)) ?? def; } catch { return def; } }
 function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
@@ -213,7 +246,8 @@ function displayLeaderboard(game) {
   ).join('') : '<li style="text-align:center;opacity:0.5">No scores yet</li>';
 }
 // Initialize leaderboards on load
-['runner','snake','slither','shooter','centi'].forEach(g => displayLeaderboard(g));
+['runner','snake','shooter','centi','castle'].forEach(g => displayLeaderboard(g));
+['easy','normal','hard','insane'].forEach(d => displayLeaderboard('slither-' + d));
 const SNAKE_NAMES = ["Sir Slithers","Noodle Lord","Wiggle Worm","Spaghetti","Mr. Hissy","Danger Noodle","Slick Rick","Sneaky Pete","Long Boi","Twisty","Bendy","Squiggles","Zippy","Zoomer","Chompers","Gobbles","Slinky","Wiggleton","Stretch","Coily","Rattles","Fangs McGee","Venom Vic","Scale Face","Hiss Boss"];
 
 // Draw a skull shape
@@ -265,12 +299,42 @@ function drawSkull(ctx, x, y, size, color) {
   // Ground obstacles - realistic death themed
   function groundObs() {
     const t = Math.random();
-    if (t < 0.2) return { w: 35, h: 55, type: 'coffin' };
-    if (t < 0.4) return { w: 30, h: 50, type: 'tombstone' };
-    if (t < 0.55) return { w: 25, h: 60, type: 'cross' };
-    if (t < 0.7) return { w: 40, h: 35, type: 'skullpile' };
-    if (t < 0.85) return { w: 28, h: 45, type: 'candle' };
-    return { w: 35, h: 40, type: 'pumpkin' };
+    // Mix of heights - some tall (precise jumping), some medium, some short
+    // NEW: Some wide/low obstacles require DUCKING (archway, lowbranch)
+    if (t < 0.08) return { w: 30, h: 80, type: 'tallcross' };      // TALL - precise jump needed
+    if (t < 0.16) return { w: 35, h: 70, type: 'obelisk' };        // TALL
+    if (t < 0.26) return { w: 25, h: 65, type: 'cross' };          // Medium-tall
+    if (t < 0.36) return { w: 35, h: 55, type: 'coffin' };         // Medium
+    if (t < 0.46) return { w: 30, h: 50, type: 'tombstone' };      // Medium
+    if (t < 0.56) return { w: 40, h: 35, type: 'skullpile' };      // Short - jump
+    if (t < 0.66) return { w: 28, h: 45, type: 'candle' };         // Medium-short
+    if (t < 0.76) return { w: 35, h: 40, type: 'pumpkin' };        // Short - jump
+    // DUCK obstacles - wide with gap at bottom
+    if (t < 0.88) return { w: 70, h: 50, type: 'archway', needsDuck: true };  // DUCK under the arch
+    return { w: 60, h: 45, type: 'lowbranch', needsDuck: true };              // DUCK under branch
+  }
+
+  // Ground obstacle patterns - creates interesting groupings
+  let patternQueue = [];
+  function spawnPattern() {
+    const patterns = [
+      // Single obstacle (most common)
+      [{ offset: 0, type: 'single' }],
+      // Double staggered - low then high
+      [{ offset: 0, type: 'short' }, { offset: 120, type: 'tall' }],
+      // Triple wave
+      [{ offset: 0, type: 'medium' }, { offset: 100, type: 'short' }, { offset: 200, type: 'medium' }],
+      // Gap jump - two obstacles with just enough room
+      [{ offset: 0, type: 'tall' }, { offset: 180, type: 'tall' }],
+    ];
+    return patterns[Math.floor(Math.random() * patterns.length)];
+  }
+
+  function getObsForPattern(ptype) {
+    if (ptype === 'tall') return { w: 30, h: 75, type: 'obelisk' };
+    if (ptype === 'short') return { w: 40, h: 35, type: 'skullpile' };
+    if (ptype === 'medium') return { w: 30, h: 50, type: 'tombstone' };
+    return groundObs(); // 'single' gets random
   }
 
   function reset() {
@@ -295,29 +359,92 @@ function drawSkull(ctx, x, y, size, color) {
     const skH = skull.ducking ? DUCK_H : SKULL_H;
     if (skull.y >= GY - skH) { skull.y = GY - skH; skull.vy = 0; skull.jumping = false; }
 
-    // Spawn ground obstacles
-    const gap = Math.max(180, 420 - score * 0.3);
+    // Spawn ground obstacles with patterns - VARIED spacing
+    const baseGap = Math.max(280, 480 - score * 0.2);
+    const gapVariance = 80 + Math.random() * 150; // Random 80-230 extra pixels
+    const gap = baseGap + gapVariance;
     if (obstacles.length === 0 || obstacles[obstacles.length-1].x < W - gap) {
-      const o = groundObs();
-      obstacles.push({ x: W + 20, y: GY - o.h, ...o });
+      // 60% chance to spawn ground obstacle, 40% skip it entirely
+      if (Math.random() < 0.6) {
+        // Use pattern system for varied obstacle groupings
+        if (patternQueue.length === 0 && Math.random() < 0.4) {
+          // 40% chance to start a multi-obstacle pattern
+          patternQueue = spawnPattern();
+        }
+
+        if (patternQueue.length > 0) {
+          const next = patternQueue.shift();
+          const o = getObsForPattern(next.type);
+          obstacles.push({ x: W + 20 + (next.offset || 0), y: GY - o.h, ...o });
+        } else {
+          const o = groundObs();
+          obstacles.push({ x: W + 20, y: GY - o.h, ...o });
+        }
+      }
     }
     obstacles.forEach(o => o.x -= speed);
     obstacles = obstacles.filter(o => o.x > -60);
 
-    // Spawn falling reapers/ghosts - less frequent, better timed with ground obstacles
-    const lastObs = obstacles[obstacles.length - 1];
-    const safeToSpawn = !lastObs || lastObs.x < W - 250; // Don't spawn if ground obstacle too close
+    // Spawn flying objects - IN THE MIDDLE between ground obstacles
     const lastFall = fallingThings[fallingThings.length - 1];
-    const fallCooldown = !lastFall || lastFall.x < W - 300; // Space out flying objects
-    if (safeToSpawn && fallCooldown && Math.random() < 0.003 + score * 0.00002) {
-      const fallType = Math.random() > 0.5 ? 'reaper' : 'ghost';
-      const yTarget = Math.random() > 0.5 ? GY - 25 : GY - 75; // Low (jump over) or high (duck under)
-      fallingThings.push({ x: W + 80, y: -50, targetY: yTarget, type: fallType, w: 40, h: 50, phase: 0 });
+
+    // Find obstacles ahead and behind spawn point to ensure flyer is IN THE MIDDLE
+    const obsAhead = obstacles.find(o => o.x > W - 150 && o.x < W + 150); // Near spawn
+    const obsBehind = obstacles.find(o => o.x > W - 450 && o.x < W - 200); // Further back
+
+    // Only spawn if there's clear space - no obstacles too close to spawn point
+    const clearZone = !obsAhead;
+
+    // Safe spacing from other flyers - increased for fewer flyers
+    const flyerSpacing = Math.max(280, 350 - score * 0.08);
+    const safeFromFlying = !lastFall || lastFall.x < W - flyerSpacing;
+
+    // Flyer spawn rate - REDUCED for fewer flyers
+    const flyerSpawnRate = 0.008 + score * 0.00006;
+    if (safeFromFlying && clearZone && Math.random() < flyerSpawnRate) {
+      // Decide flyer type
+      const flyerRoll = Math.random();
+
+      if (flyerRoll < 0.30) {
+        // HIGH FLYER - must DUCK to avoid (bats/ghosts)
+        const flyType = Math.random() > 0.5 ? 'bat' : 'ghost';
+        const targetY = GY - DUCK_H - 5 - 22;
+        fallingThings.push({
+          x: W + 60, y: targetY - 40, targetY: targetY,
+          type: flyType, w: 45, h: 22, phase: 0, mustDuck: true
+        });
+      } else if (flyerRoll < 0.45) {
+        // DIVE BOMBER - starts high, dives down!
+        const flyType = Math.random() > 0.5 ? 'hawk' : 'demon';
+        fallingThings.push({
+          x: W + 80, y: -60, targetY: GY - 45,
+          type: flyType, w: 40, h: 35, phase: 0, mustDuck: false, isDiver: true
+        });
+      } else {
+        // LOW FLYER - must JUMP to avoid (reapers/crows)
+        const flyType = Math.random() > 0.5 ? 'reaper' : 'crow';
+        fallingThings.push({
+          x: W + 60, y: -40, targetY: GY - 42,
+          type: flyType, w: 40, h: 38, phase: 0, mustDuck: false
+        });
+      }
     }
+
     fallingThings.forEach(f => {
-      f.phase += 0.1;
-      f.x -= speed * 0.8;
-      f.y += (f.targetY - f.y) * 0.05;
+      f.phase += 0.12;
+      f.x -= speed * 0.95;
+
+      if (f.isDiver) {
+        // Dive bombers swoop down fast then level out
+        const diveProgress = Math.min(1, (W + 80 - f.x) / 200);
+        const diveY = f.targetY * diveProgress + (-60) * (1 - diveProgress);
+        f.y += (diveY - f.y) * 0.15;
+      } else {
+        // Normal smooth movement to target height
+        f.y += (f.targetY - f.y) * 0.08;
+      }
+      // Slight wave motion
+      f.y += Math.sin(f.phase) * 0.5;
     });
     fallingThings = fallingThings.filter(f => f.x > -60);
 
@@ -329,17 +456,37 @@ function drawSkull(ctx, x, y, size, color) {
 
     // Collision with ground obstacles
     for (const o of obstacles) {
-      if (skull.x + 8 < o.x + o.w - 8 && skull.x + SKULL_W - 8 > o.x + 8 && skull.y + 5 < o.y + o.h - 5 && skull.y + skH - 5 > o.y + 5) { die(); return; }
+      // Duck obstacles have a gap at the bottom - collision only in blocking zone
+      if (o.needsDuck) {
+        const gapHeight = 22; // Same as in drawing code
+        const blockBottom = o.y + o.h - gapHeight;
+        // Only collide if skull overlaps the BLOCKING portion (not the gap)
+        if (skull.x + 8 < o.x + o.w - 8 && skull.x + SKULL_W - 8 > o.x + 8 &&
+            skull.y + 5 < blockBottom && skull.y + skH - 5 > o.y + 5) {
+          die(); return;
+        }
+      } else {
+        // Normal obstacles - full hitbox
+        if (skull.x + 8 < o.x + o.w - 8 && skull.x + SKULL_W - 8 > o.x + 8 && skull.y + 5 < o.y + o.h - 5 && skull.y + skH - 5 > o.y + 5) { die(); return; }
+      }
     }
 
-    // Collision with falling things
+    // Collision with flying things
     for (const f of fallingThings) {
+      // Must duck flyers - ducking avoids them
+      if (f.mustDuck && skull.ducking) continue;
+      // Low flyers - jumping avoids them
+      if (!f.mustDuck && skull.jumping && skull.y < GY - SKULL_H - 15) continue;
+
+      // Check collision
       const fTop = f.y, fBottom = f.y + f.h;
-      const canDuck = f.targetY < GY - 50; // High target = can duck
-      const canJump = f.targetY >= GY - 50; // Low target = can jump
-      if (canDuck && skull.ducking) continue;
-      if (canJump && skull.y < GY - SKULL_H - 20) continue; // Jumped over
-      if (skull.x + 10 < f.x + f.w - 10 && skull.x + SKULL_W - 10 > f.x + 10 && skull.y + 5 < fBottom - 10 && skull.y + skH > fTop + 10) { die(); return; }
+      const hitboxShrink = 8;
+      if (skull.x + hitboxShrink < f.x + f.w - hitboxShrink &&
+          skull.x + SKULL_W - hitboxShrink > f.x + hitboxShrink &&
+          skull.y + hitboxShrink < fBottom - hitboxShrink &&
+          skull.y + skH - hitboxShrink > fTop + hitboxShrink) {
+        die(); return;
+      }
     }
 
     if (score > best) { best = Math.floor(score); lsSet('runner-best', best); document.getElementById('runner-best').textContent = best; }
@@ -425,6 +572,33 @@ function drawSkull(ctx, x, y, size, color) {
         ctx.fillStyle = '#4a4040';
         ctx.fillRect(o.x + o.w/2 - 4, o.y, 8, o.h);
         ctx.fillRect(o.x, o.y + 12, o.w, 8);
+      } else if (o.type === 'tallcross') {
+        // Tall ornate cross - requires precise jumping
+        ctx.fillStyle = '#3a3535';
+        ctx.fillRect(o.x + o.w/2 - 5, o.y, 10, o.h);
+        ctx.fillRect(o.x - 5, o.y + 15, o.w + 10, 10);
+        // Decorative top
+        ctx.beginPath();
+        ctx.arc(o.x + o.w/2, o.y, 8, Math.PI, 0);
+        ctx.fill();
+        // Base
+        ctx.fillRect(o.x - 3, o.y + o.h - 10, o.w + 6, 10);
+      } else if (o.type === 'obelisk') {
+        // Tall stone obelisk - requires precise jumping
+        ctx.fillStyle = '#4a4a55';
+        ctx.beginPath();
+        ctx.moveTo(o.x + o.w/2, o.y);
+        ctx.lineTo(o.x + o.w - 3, o.y + 15);
+        ctx.lineTo(o.x + o.w, o.y + o.h);
+        ctx.lineTo(o.x, o.y + o.h);
+        ctx.lineTo(o.x + 3, o.y + 15);
+        ctx.closePath();
+        ctx.fill();
+        // Hieroglyphs
+        ctx.fillStyle = '#2a2a35';
+        for (let i = 0; i < 3; i++) {
+          ctx.fillRect(o.x + 8, o.y + 25 + i * 18, o.w - 16, 3);
+        }
       } else if (o.type === 'skullpile') {
         for (let i = 0; i < 3; i++) {
           drawSkull(ctx, o.x + 10 + i * 10, o.y + o.h - 12 - i * 8, 18, '#d4c4b4');
@@ -447,15 +621,146 @@ function drawSkull(ctx, x, y, size, color) {
         ctx.lineTo(o.x + o.w/2 + 5, o.y + 33); ctx.lineTo(o.x + o.w/2 - 5, o.y + 33); ctx.fill();
         ctx.fillStyle = '#228800';
         ctx.fillRect(o.x + o.w/2 - 3, o.y, 6, 10);
+      } else if (o.type === 'archway') {
+        // Stone archway - DUCK underneath! Clear gap at bottom for ducking skull
+        const gapHeight = 22; // Clear space at bottom for ducking (DUCK_H = 18 + buffer)
+        const blockHeight = o.h - gapHeight; // Height of blocking portion
+        ctx.fillStyle = '#4a4555';
+        // Left pillar - only goes partway down, leaving gap
+        ctx.fillRect(o.x, o.y, 10, blockHeight);
+        // Right pillar - only goes partway down, leaving gap
+        ctx.fillRect(o.x + o.w - 10, o.y, 10, blockHeight);
+        // Arch top connecting pillars (blocks standing skull)
+        ctx.beginPath();
+        ctx.moveTo(o.x, o.y);
+        ctx.lineTo(o.x, o.y + blockHeight);
+        ctx.lineTo(o.x + o.w, o.y + blockHeight);
+        ctx.lineTo(o.x + o.w, o.y);
+        ctx.closePath();
+        ctx.fill();
+        // Decorative arch curve
+        ctx.fillStyle = '#3a3545';
+        ctx.beginPath();
+        ctx.moveTo(o.x + 10, o.y + blockHeight);
+        ctx.quadraticCurveTo(o.x + o.w/2, o.y + blockHeight + 12, o.x + o.w - 10, o.y + blockHeight);
+        ctx.lineTo(o.x + o.w - 10, o.y + blockHeight - 8);
+        ctx.quadraticCurveTo(o.x + o.w/2, o.y + blockHeight + 2, o.x + 10, o.y + blockHeight - 8);
+        ctx.closePath();
+        ctx.fill();
+        // Keystone
+        ctx.fillStyle = '#5a5565';
+        ctx.beginPath();
+        ctx.moveTo(o.x + o.w/2 - 6, o.y);
+        ctx.lineTo(o.x + o.w/2 + 6, o.y);
+        ctx.lineTo(o.x + o.w/2 + 4, o.y + 12);
+        ctx.lineTo(o.x + o.w/2 - 4, o.y + 12);
+        ctx.closePath();
+        ctx.fill();
+        // Clear space indicator - dotted line showing safe zone
+        ctx.strokeStyle = '#44ff44';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.moveTo(o.x - 5, o.y + blockHeight + 2);
+        ctx.lineTo(o.x + o.w + 5, o.y + blockHeight + 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        // "DUCK" indicator
+        ctx.fillStyle = '#44ff44';
+        ctx.font = 'bold 9px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('DUCK', o.x + o.w/2, o.y - 3);
+        ctx.textAlign = 'left';
+      } else if (o.type === 'lowbranch') {
+        // Dead tree branch hanging low - DUCK underneath! Clear gap at bottom
+        const gapHeight = 22; // Clear space for ducking
+        const blockY = o.y + o.h - gapHeight; // Where the blocking ends
+        ctx.strokeStyle = '#3a2a20';
+        ctx.lineWidth = 10;
+        // Main thick branch at top
+        ctx.beginPath();
+        ctx.moveTo(o.x - 15, o.y);
+        ctx.quadraticCurveTo(o.x + o.w/2, o.y + 15, o.x + o.w + 15, o.y + 5);
+        ctx.stroke();
+        // Hanging thorny vines that block standing skull
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = '#2a1a15';
+        ctx.beginPath();
+        ctx.moveTo(o.x + 10, o.y + 10);
+        ctx.lineTo(o.x + 8, blockY);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(o.x + o.w/2, o.y + 12);
+        ctx.lineTo(o.x + o.w/2 + 3, blockY);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(o.x + o.w - 10, o.y + 8);
+        ctx.lineTo(o.x + o.w - 12, blockY);
+        ctx.stroke();
+        // Thorns
+        ctx.fillStyle = '#2a1a15';
+        for (let i = 0; i < 3; i++) {
+          const tx = o.x + 8 + i * (o.w - 16) / 2;
+          const ty = o.y + 20 + i * 8;
+          ctx.beginPath();
+          ctx.moveTo(tx - 4, ty); ctx.lineTo(tx, ty + 6); ctx.lineTo(tx + 4, ty);
+          ctx.fill();
+        }
+        // Clear space indicator
+        ctx.strokeStyle = '#44ff44';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.moveTo(o.x - 5, blockY + 2);
+        ctx.lineTo(o.x + o.w + 5, blockY + 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        // "DUCK" indicator
+        ctx.fillStyle = '#44ff44';
+        ctx.font = 'bold 9px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('DUCK', o.x + o.w/2, o.y - 8);
+        ctx.textAlign = 'left';
       }
     });
 
-    // Falling reapers/ghosts
+    // Flying things - with visual cue for duck vs jump
     fallingThings.forEach(f => {
       ctx.save();
       ctx.translate(f.x + f.w/2, f.y + f.h/2);
-      if (f.type === 'reaper') {
-        // Black robe
+
+      if (f.type === 'bat') {
+        // Bat - must duck under
+        const wingFlap = Math.sin(f.phase * 3) * 15;
+        ctx.fillStyle = '#2a1a2a';
+        // Body
+        ctx.beginPath(); ctx.ellipse(0, 0, 10, 8, 0, 0, Math.PI * 2); ctx.fill();
+        // Wings
+        ctx.beginPath();
+        ctx.moveTo(-5, 0); ctx.quadraticCurveTo(-25, -wingFlap - 5, -20, wingFlap);
+        ctx.lineTo(-5, 3); ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(5, 0); ctx.quadraticCurveTo(25, -wingFlap - 5, 20, wingFlap);
+        ctx.lineTo(5, 3); ctx.fill();
+        // Eyes
+        ctx.fillStyle = '#ff0000';
+        ctx.beginPath(); ctx.arc(-4, -2, 2, 0, Math.PI * 2); ctx.arc(4, -2, 2, 0, Math.PI * 2); ctx.fill();
+      } else if (f.type === 'ghost') {
+        // Ghost - must duck under (floats at head height)
+        ctx.fillStyle = 'rgba(180, 180, 200, 0.75)';
+        ctx.beginPath();
+        ctx.arc(0, -5, 15, Math.PI, 0);
+        ctx.lineTo(12, 10);
+        for (let i = 0; i < 4; i++) {
+          const wx = 12 - i * 8;
+          ctx.quadraticCurveTo(wx - 2, 15, wx - 6, 10);
+        }
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#000';
+        ctx.beginPath(); ctx.ellipse(-5, -5, 3, 5, 0, 0, Math.PI * 2); ctx.ellipse(5, -5, 3, 5, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(0, 5, 4, 5, 0, 0, Math.PI * 2); ctx.fill();
+      } else if (f.type === 'reaper') {
+        // Reaper - jump over (low flyer)
         ctx.fillStyle = '#111';
         ctx.beginPath();
         ctx.moveTo(0, -f.h/2);
@@ -463,38 +768,99 @@ function drawSkull(ctx, x, y, size, color) {
         ctx.lineTo(f.w/2 - 5, f.h/2);
         ctx.quadraticCurveTo(f.w/2, -f.h/4, 0, -f.h/2);
         ctx.fill();
-        // Hood
         ctx.beginPath(); ctx.arc(0, -f.h/3, 12, Math.PI, 0); ctx.fill();
-        // Skull face
         drawSkull(ctx, 0, -f.h/4, 16, '#ccc');
-        // Scythe
         ctx.strokeStyle = '#555'; ctx.lineWidth = 3;
         ctx.beginPath(); ctx.moveTo(f.w/2, -f.h/3); ctx.lineTo(f.w/2 + 15, f.h/3); ctx.stroke();
-        ctx.fillStyle = '#888';
-        ctx.beginPath(); ctx.moveTo(f.w/2 + 15, -f.h/3 - 5);
-        ctx.quadraticCurveTo(f.w/2 + 30, -f.h/3, f.w/2 + 15, 0);
-        ctx.lineTo(f.w/2, -f.h/3 + 5); ctx.fill();
-      } else {
-        // Ghost
-        ctx.fillStyle = 'rgba(200, 200, 220, 0.7)';
+      } else if (f.type === 'crow') {
+        // Crow - jump over (low flyer)
+        const wingFlap = Math.sin(f.phase * 4) * 12;
+        ctx.fillStyle = '#1a1a1a';
+        // Body
+        ctx.beginPath(); ctx.ellipse(0, 0, 15, 8, 0, 0, Math.PI * 2); ctx.fill();
+        // Head
+        ctx.beginPath(); ctx.arc(12, -3, 7, 0, Math.PI * 2); ctx.fill();
+        // Beak
+        ctx.fillStyle = '#aa6600';
+        ctx.beginPath(); ctx.moveTo(18, -3); ctx.lineTo(25, -1); ctx.lineTo(18, 1); ctx.fill();
+        // Wings
+        ctx.fillStyle = '#1a1a1a';
         ctx.beginPath();
-        ctx.arc(0, -f.h/4, f.w/2 - 5, Math.PI, 0);
-        ctx.lineTo(f.w/2 - 5, f.h/3);
-        for (let i = 0; i < 4; i++) {
-          const wx = f.w/2 - 5 - i * (f.w - 10) / 4;
-          ctx.quadraticCurveTo(wx - 5, f.h/2, wx - (f.w - 10) / 8, f.h/3);
-        }
-        ctx.closePath(); ctx.fill();
-        // Ghost eyes
+        ctx.moveTo(-5, -3); ctx.quadraticCurveTo(-10, -wingFlap - 15, -25, -wingFlap - 5);
+        ctx.lineTo(-20, -3); ctx.fill();
+        // Eye
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(14, -4, 2, 0, Math.PI * 2); ctx.fill();
+      } else if (f.type === 'hawk') {
+        // Hawk dive bomber - swoops down fast!
+        const wingFlap = Math.sin(f.phase * 5) * 10;
+        ctx.fillStyle = '#5a3a20';
+        // Body - angled for diving
+        ctx.save();
+        ctx.rotate(0.4); // Tilted for dive
+        ctx.beginPath(); ctx.ellipse(0, 0, 18, 10, 0, 0, Math.PI * 2); ctx.fill();
+        // Head
+        ctx.fillStyle = '#6a4a30';
+        ctx.beginPath(); ctx.arc(14, -2, 8, 0, Math.PI * 2); ctx.fill();
+        // Beak - sharp!
+        ctx.fillStyle = '#ff9900';
+        ctx.beginPath(); ctx.moveTo(20, -2); ctx.lineTo(30, 0); ctx.lineTo(20, 2); ctx.fill();
+        // Wings spread for dive
+        ctx.fillStyle = '#4a2a15';
+        ctx.beginPath();
+        ctx.moveTo(-5, -5); ctx.lineTo(-25, -wingFlap - 20); ctx.lineTo(-15, -5); ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(-5, 5); ctx.lineTo(-20, wingFlap + 15); ctx.lineTo(-10, 5); ctx.fill();
+        // Fierce eye
+        ctx.fillStyle = '#ffff00';
+        ctx.beginPath(); ctx.arc(16, -3, 3, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#000';
+        ctx.beginPath(); ctx.arc(17, -3, 1.5, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      } else if (f.type === 'demon') {
+        // Small demon dive bomber!
+        const wingFlap = Math.sin(f.phase * 4) * 12;
+        ctx.save();
+        ctx.rotate(0.3);
+        // Body
+        ctx.fillStyle = '#aa2222';
+        ctx.beginPath(); ctx.ellipse(0, 0, 14, 10, 0, 0, Math.PI * 2); ctx.fill();
+        // Head
+        ctx.fillStyle = '#cc3333';
+        ctx.beginPath(); ctx.arc(10, -3, 9, 0, Math.PI * 2); ctx.fill();
+        // Horns!
+        ctx.fillStyle = '#222';
+        ctx.beginPath(); ctx.moveTo(6, -10); ctx.lineTo(3, -20); ctx.lineTo(9, -12); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(14, -10); ctx.lineTo(17, -20); ctx.lineTo(11, -12); ctx.fill();
+        // Bat wings
+        ctx.fillStyle = '#881111';
         ctx.beginPath();
-        ctx.ellipse(-8, -f.h/4, 5, 7, 0, 0, Math.PI * 2);
-        ctx.ellipse(8, -f.h/4, 5, 7, 0, 0, Math.PI * 2);
-        ctx.fill();
-        // Ghost mouth
-        ctx.beginPath(); ctx.ellipse(0, -f.h/4 + 15, 6, 8, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.moveTo(-5, 0); ctx.quadraticCurveTo(-20, -wingFlap - 10, -25, wingFlap);
+        ctx.lineTo(-8, 3); ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(-5, 0); ctx.quadraticCurveTo(-20, wingFlap + 10, -25, -wingFlap);
+        ctx.lineTo(-8, -3); ctx.fill();
+        // Evil eyes
+        ctx.fillStyle = '#ffff00';
+        ctx.beginPath(); ctx.arc(7, -4, 2.5, 0, Math.PI * 2); ctx.arc(13, -4, 2.5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#000';
+        ctx.beginPath(); ctx.arc(8, -4, 1, 0, Math.PI * 2); ctx.arc(14, -4, 1, 0, Math.PI * 2); ctx.fill();
+        // Tail
+        ctx.strokeStyle = '#aa2222'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(-14, 5); ctx.quadraticCurveTo(-25, 10, -20, 20); ctx.stroke();
+        ctx.fillStyle = '#661111';
+        ctx.beginPath(); ctx.moveTo(-20, 18); ctx.lineTo(-25, 25); ctx.lineTo(-15, 22); ctx.fill();
+        ctx.restore();
       }
+
       ctx.restore();
+
+      // Warning indicator for must-duck objects
+      if (f.mustDuck && f.x > skull.x && f.x < skull.x + 200) {
+        ctx.fillStyle = 'rgba(255, 100, 100, 0.4)';
+        ctx.font = 'bold 10px Cinzel';
+        ctx.fillText('DUCK!', f.x, f.y - 10);
+      }
     });
 
     // Player skull
@@ -624,30 +990,29 @@ function drawSkull(ctx, x, y, size, color) {
   function mkAI(i, farFromPlayer) {
     let x, y;
     if (farFromPlayer && player && !player.dead) {
-      // Spawn far from player - at least 600 units away
+      // Spawn far from player - at least 900 units away
       let attempts = 0;
       do {
         x = 100 + Math.random() * (WORLD_W - 200);
         y = 100 + Math.random() * (WORLD_H - 200);
         attempts++;
-      } while (attempts < 20 && Math.hypot(x - player.segs[0].x, y - player.segs[0].y) < 600);
+      } while (attempts < 50 && Math.hypot(x - player.segs[0].x, y - player.segs[0].y) < 900);
     } else {
       x = 100 + Math.random() * (WORLD_W - 200);
       y = 100 + Math.random() * (WORLD_H - 200);
     }
     // Random size - bigger snakes overall
     const segCount = 20 + Math.floor(Math.random() * 130);
-    // Personality: passive (just collects orbs), aggressive (hunts player), or balanced
-    const personalityRoll = Math.random();
-    const personality = personalityRoll < 0.4 ? 'passive' : (personalityRoll < 0.7 ? 'balanced' : 'aggressive');
+    // 50% hunters (target player or other snakes), 50% collectors (prioritize orbs)
+    const isHunter = Math.random() < 0.5;
     return {
       segs: Array.from({length: segCount}, (_, j) => ({ x: x - j*7, y })),
-      angle: Math.random() * Math.PI * 2, baseSpeed: 1.2 + Math.random() * 0.6,
+      angle: Math.random() * Math.PI * 2, baseSpeed: 1.4 + Math.random() * 0.5,
       colors: COLOR_PATTERNS[i % COLOR_PATTERNS.length],
       dead: false, target: null, changeTimer: 0, boosting: false, boostTimer: 0,
       mode: 'wander', hasAntenna: Math.random() < 0.35,
       name: SNAKE_NAMES[i % SNAKE_NAMES.length],
-      personality: personality
+      isHunter: isHunter, huntTarget: null, evadeTimer: 0
     };
   }
 
@@ -665,102 +1030,186 @@ function drawSkull(ctx, x, y, size, color) {
   }
 
   function getSpeed(snake, isPlayer) {
-    const sizePenalty = Math.min(snake.segs.length * 0.01, 1.0);
-    const base = isPlayer ? 2.6 - sizePenalty : snake.baseSpeed * difficulty - sizePenalty * 0.4;
-    return Math.max(base, 0.9);
+    // Reduced size penalty - big snakes stay fast!
+    const sizePenalty = Math.min(snake.segs.length * 0.003, 0.5);
+    const base = isPlayer ? 2.8 - sizePenalty : snake.baseSpeed * difficulty - sizePenalty * 0.3;
+    return Math.max(base, 1.5);
   }
 
-  function moveSnake(snake, tx, ty, spd) {
+  function moveSnake(snake, tx, ty, spd, fastTurn, isAI) {
     const head = snake.segs[0], dx = tx - head.x, dy = ty - head.y;
-    if (Math.sqrt(dx*dx+dy*dy) < 2) return;
-    let da = Math.atan2(dy, dx) - snake.angle;
-    while (da > Math.PI) da -= Math.PI*2; while (da < -Math.PI) da += Math.PI*2;
-    snake.angle += Math.max(-0.09, Math.min(0.09, da));
-    snake.segs.unshift({ x: Math.max(15, Math.min(WORLD_W-15, head.x + Math.cos(snake.angle) * spd)), y: Math.max(15, Math.min(WORLD_H-15, head.y + Math.sin(snake.angle) * spd)) });
+    const dist = Math.sqrt(dx*dx+dy*dy);
+
+    // AI snakes ALWAYS move forward - never stop
+    if (!isAI && dist < 2) return;
+
+    // If target is very close, just keep moving in current direction
+    if (dist > 2) {
+      let da = Math.atan2(dy, dx) - snake.angle;
+      while (da > Math.PI) da -= Math.PI*2; while (da < -Math.PI) da += Math.PI*2;
+      const turnRate = fastTurn ? 0.25 : 0.09;
+      snake.angle += Math.max(-turnRate, Math.min(turnRate, da));
+    }
+
+    // Always move forward
+    snake.segs.unshift({
+      x: Math.max(15, Math.min(WORLD_W-15, head.x + Math.cos(snake.angle) * spd)),
+      y: Math.max(15, Math.min(WORLD_H-15, head.y + Math.sin(snake.angle) * spd))
+    });
     snake.segs.pop();
   }
 
   function aiDecide(ai) {
-    ai.changeTimer--;
     const ph = player.segs[0], ah = ai.segs[0];
     const distToPlayer = Math.hypot(ph.x - ah.x, ph.y - ah.y);
+    let targetX, targetY, spd = getSpeed(ai, false);
 
-    // Personality-based behavior
-    // Passive: just collects orbs, never attacks
-    // Balanced: sometimes attacks if close
-    // Aggressive: actively hunts player
-    let aggroRange, interceptChance;
-    if (ai.personality === 'passive') {
-      aggroRange = 0; // Never intercepts
-      interceptChance = 0;
-    } else if (ai.personality === 'balanced') {
-      aggroRange = 150 + difficulty * 50;
-      interceptChance = 0.15 + difficulty * 0.1;
-    } else { // aggressive
-      aggroRange = 300 + difficulty * 100;
-      interceptChance = 0.5 + difficulty * 0.2;
+    // ALWAYS set a default target so snake never stops
+    targetX = ah.x + Math.cos(ai.angle) * 100;
+    targetY = ah.y + Math.sin(ai.angle) * 100;
+
+    // Danger check - higher frequency (0.6 to 0.85 based on difficulty)
+    const dangerCheckChance = 0.6 + difficulty * 0.12;
+    let danger = null;
+    let dangerCount = 0; // Track if surrounded
+    const dangerRange = 65 + difficulty * 10;
+
+    if (Math.random() < dangerCheckChance) {
+      // Check player body
+      for (let i = 5; i < player.segs.length; i += 3) {
+        const d = Math.hypot(ah.x - player.segs[i].x, ah.y - player.segs[i].y);
+        if (d < dangerRange) {
+          if (!danger || d < Math.hypot(ah.x - danger.x, ah.y - danger.y)) {
+            danger = player.segs[i];
+          }
+          dangerCount++;
+        }
+      }
+      // Check other AI bodies
+      for (const other of aiSnakes) {
+        if (other === ai || other.dead) continue;
+        for (let i = 5; i < other.segs.length; i += 3) {
+          const d = Math.hypot(ah.x - other.segs[i].x, ah.y - other.segs[i].y);
+          if (d < dangerRange) {
+            if (!danger || d < Math.hypot(ah.x - danger.x, ah.y - danger.y)) {
+              danger = other.segs[i];
+            }
+            dangerCount++;
+          }
+        }
+      }
     }
 
-    if (ai.changeTimer <= 0) {
-      ai.changeTimer = 25 + Math.random() * 40;
-      if (ai.personality !== 'passive' && distToPlayer < aggroRange && ai.segs.length > 10 && Math.random() < interceptChance) {
-        ai.mode = 'intercept'; ai.boostTimer = 50 + Math.random() * 30;
+    // Evasion when danger detected
+    if (danger) {
+      const awayAngle = Math.atan2(ah.y - danger.y, ah.x - danger.x);
+      // If surrounded (multiple dangers), boost and turn hard
+      if (dangerCount >= 3) {
+        targetX = ah.x + Math.cos(awayAngle) * 200;
+        targetY = ah.y + Math.sin(awayAngle) * 200;
+        ai.boostTimer = Math.max(ai.boostTimer, 40);
       } else {
-        ai.mode = 'chase';
-        // Prioritize high-value orbs from dead snakes (val >= 2)
-        let best = null, bestScore = -Infinity;
+        targetX = ah.x + Math.cos(awayAngle) * 130;
+        targetY = ah.y + Math.sin(awayAngle) * 130;
+        if (Math.random() < 0.4) ai.boostTimer = Math.max(ai.boostTimer, 25);
+      }
+    } else {
+      // Normal behavior
+      ai.changeTimer--;
+      if (ai.changeTimer <= 0) {
+        // Decision speed scales with difficulty (faster at higher difficulty)
+        ai.changeTimer = Math.max(20, 50 - difficulty * 15) + Math.random() * 40;
+
+        // Hunt chance scales with difficulty (0.3 to 0.5 for hunters)
+        const huntChance = 0.25 + difficulty * 0.12;
+        const huntRange = 250 + difficulty * 100;
+
+        if (ai.isHunter && distToPlayer < huntRange && Math.random() < huntChance) {
+          ai.mode = 'intercept';
+        } else if (ai.isHunter && Math.random() < huntChance * 0.7) {
+          // Hunt other AI snakes
+          let nearAI = null, nearDist = 500;
+          for (const other of aiSnakes) {
+            if (other !== ai && !other.dead) {
+              const d = Math.hypot(other.segs[0].x - ah.x, other.segs[0].y - ah.y);
+              if (d < nearDist && other.segs.length < ai.segs.length * 1.2) {
+                nearDist = d; nearAI = other;
+              }
+            }
+          }
+          if (nearAI) {
+            ai.mode = 'huntAI';
+            ai.huntTarget = nearAI;
+          } else {
+            ai.mode = 'chase';
+          }
+        } else {
+          ai.mode = 'chase';
+        }
+
+        // Find orb target - prioritize dead snake orbs
+        let best = null, bestDist = Infinity;
         orbs.forEach(o => {
           const d = Math.hypot(o.x - ah.x, o.y - ah.y);
-          // Score = value bonus - distance penalty (high value orbs worth traveling for)
-          const orbScore = (o.val >= 2 ? 500 : 0) - d;
-          if (orbScore > bestScore) { bestScore = orbScore; best = o; }
+          const adjusted = o.val >= 2 ? d * 0.4 : d;
+          if (adjusted < bestDist) { bestDist = adjusted; best = o; }
         });
-        ai.target = best || { x: Math.random()*WORLD_W, y: Math.random()*WORLD_H };
+        ai.target = best;
+      }
+
+      // Execute behavior - accuracy scales with difficulty
+      const inaccuracy = Math.max(40, 120 - difficulty * 40); // Less random at higher difficulty
+
+      if (ai.mode === 'intercept' && !player.dead && distToPlayer < 400) {
+        // Intercept player - predict where they're going (better at higher difficulty)
+        const predict = 10 + difficulty * 15;
+        targetX = ph.x + Math.cos(player.angle) * predict + (Math.random() - 0.5) * inaccuracy;
+        targetY = ph.y + Math.sin(player.angle) * predict + (Math.random() - 0.5) * inaccuracy;
+      } else if (ai.mode === 'huntAI' && ai.huntTarget && !ai.huntTarget.dead) {
+        const prey = ai.huntTarget.segs[0];
+        const predict = 8 + difficulty * 10;
+        targetX = prey.x + Math.cos(ai.huntTarget.angle) * predict + (Math.random() - 0.5) * inaccuracy;
+        targetY = prey.y + Math.sin(ai.huntTarget.angle) * predict + (Math.random() - 0.5) * inaccuracy;
+      } else if (ai.target) {
+        targetX = ai.target.x;
+        targetY = ai.target.y;
+      } else {
+        // Smooth wandering - gentle curves, never stop
+        ai.wanderAngle = (ai.wanderAngle || ai.angle) + (Math.random() - 0.5) * 0.3;
+        targetX = ah.x + Math.cos(ai.wanderAngle) * 200;
+        targetY = ah.y + Math.sin(ai.wanderAngle) * 200;
+      }
+    }
+
+    // BOOSTING - scales with difficulty
+    const boostChance = 0.006 + difficulty * 0.004;
+    if (ai.boostTimer <= 0 && ai.segs.length > 15) {
+      if (Math.random() < boostChance) {
+        ai.boostTimer = 50 + Math.random() * 70;
+      }
+      if (ai.target && ai.target.val >= 2 && Math.random() < 0.025) {
+        ai.boostTimer = 40 + Math.random() * 40;
+      }
+      if (boosting && distToPlayer < 350 && Math.random() < 0.015) {
+        ai.boostTimer = 45 + Math.random() * 45;
       }
     }
 
     ai.boosting = ai.boostTimer > 0;
     if (ai.boostTimer > 0) ai.boostTimer--;
 
-    // Random boost - aggressive snakes boost more
-    const boostChance = ai.personality === 'aggressive' ? 0.008 : (ai.personality === 'balanced' ? 0.004 : 0.002);
-    if (!ai.boosting && ai.segs.length > 12 && Math.random() < boostChance) {
-      ai.boostTimer = 30 + Math.random() * 40;
-    }
-
-    let targetX, targetY, spd = getSpeed(ai, false);
-    if (ai.mode === 'intercept' && !player.dead && ai.personality !== 'passive') {
-      // HEAD CUT-OFF: Aim to cross PERPENDICULAR to player's path
-      const playerSpeed = getSpeed(player, true) * (boosting ? 1.65 : 1);
-      const timeToIntercept = distToPlayer / (spd * 1.5 + playerSpeed);
-      const futureX = ph.x + Math.cos(player.angle) * playerSpeed * timeToIntercept * 1.2;
-      const futureY = ph.y + Math.sin(player.angle) * playerSpeed * timeToIntercept * 1.2;
-
-      // Aim to cross perpendicular - pick side based on AI position
-      const perpAngle = player.angle + Math.PI / 2;
-      const sideSign = ((ah.x - ph.x) * Math.cos(perpAngle) + (ah.y - ph.y) * Math.sin(perpAngle)) > 0 ? 1 : -1;
-
-      // Target point crosses player's future path
-      const crossDist = 25 + ai.segs.length * 0.2;
-      targetX = futureX + Math.cos(player.angle) * crossDist - sideSign * Math.cos(perpAngle) * 40;
-      targetY = futureY + Math.sin(player.angle) * crossDist - sideSign * Math.sin(perpAngle) * 40;
-
-      // Boost when intercepting close - but less aggressive overall
-      if (distToPlayer < 140 && ai.personality === 'aggressive') ai.boosting = true;
-    } else {
-      targetX = ai.target ? ai.target.x : Math.random() * WORLD_W;
-      targetY = ai.target ? ai.target.y : Math.random() * WORLD_H;
-      // Boost toward high-value orbs!
-      if (ai.target && ai.target.val >= 2 && ai.segs.length > 12) {
-        ai.boosting = true;
+    if (ai.boosting && ai.segs.length > 10) {
+      spd *= 1.7;
+      if (Math.random() < 0.14) {
+        ai.segs.pop();
+        orbs.push({ x: ai.segs[ai.segs.length-1].x, y: ai.segs[ai.segs.length-1].y, r: 5, color: ai.colors[0], val: 1 });
       }
     }
 
-    if (ai.boosting && ai.segs.length > 10) {
-      spd *= 1.65;
-      if (Math.random() < 0.1) { ai.segs.pop(); orbs.push({ x: ai.segs[ai.segs.length-1].x, y: ai.segs[ai.segs.length-1].y, r: 4, color: ai.colors[0], val: 1 }); }
-    }
-    moveSnake(ai, targetX, targetY, spd);
+    targetX = Math.max(80, Math.min(WORLD_W - 80, targetX));
+    targetY = Math.max(80, Math.min(WORLD_H - 80, targetY));
+
+    moveSnake(ai, targetX, targetY, spd, false, true);
   }
 
   function eatOrbs(snake, isPlayer) {
@@ -786,25 +1235,57 @@ function drawSkull(ctx, x, y, size, color) {
         if (Math.hypot(ph.x - ai.segs[i].x, ph.y - ai.segs[i].y) < pr + ar * 0.65) { playerDie(); return; }
       }
       for (let i = 3; i < player.segs.length; i++) {
-        if (Math.hypot(ai.segs[0].x - player.segs[i].x, ai.segs[0].y - player.segs[i].y) < ar + pr * 0.65) { aiDie(ai); break; }
+        if (Math.hypot(ai.segs[0].x - player.segs[i].x, ai.segs[0].y - player.segs[i].y) < ar + pr * 0.65) { aiDie(ai, null); break; }
+      }
+    }
+    // AI vs AI collisions - snakes can kill each other!
+    for (let a = 0; a < aiSnakes.length; a++) {
+      const ai1 = aiSnakes[a];
+      if (ai1.dead) continue;
+      const r1 = Math.min(14, 5 + ai1.segs.length * 0.08);
+      for (let b = 0; b < aiSnakes.length; b++) {
+        if (a === b) continue;
+        const ai2 = aiSnakes[b];
+        if (ai2.dead) continue;
+        const r2 = Math.min(14, 5 + ai2.segs.length * 0.08);
+        // Check if ai1's head hits ai2's body
+        for (let i = 3; i < ai2.segs.length; i++) {
+          if (Math.hypot(ai1.segs[0].x - ai2.segs[i].x, ai1.segs[0].y - ai2.segs[i].y) < r1 + r2 * 0.65) {
+            aiDie(ai1, ai2); // ai1 dies, ai2 is the killer
+            break;
+          }
+        }
       }
     }
   }
 
-  function aiDie(ai) {
+  function aiDie(ai, killer) {
     ai.segs.forEach((s, i) => { if (i % 2 === 0) orbs.push({ x: s.x, y: s.y, r: 6, color: ai.colors[0], val: 2 }); });
-    ai.dead = true; kills++;
-    document.getElementById('slither-kills').textContent = kills;
+    ai.dead = true;
+    // If player killed this AI, increment kills counter
+    if (!killer) {
+      kills++;
+      document.getElementById('slither-kills').textContent = kills;
+    } else {
+      // Another AI killed this one - killer gets a boost (grows a bit)
+      for (let i = 0; i < Math.min(5, Math.floor(ai.segs.length / 10)); i++) {
+        killer.segs.push({...killer.segs[killer.segs.length-1]});
+      }
+      // Killer becomes more aggressive temporarily
+      killer.boostTimer = 60;
+    }
     setTimeout(() => { const idx = aiSnakes.indexOf(ai); if (idx >= 0) aiSnakes[idx] = mkAI(idx, true); }, 2000);
   }
 
   function playerDie() {
     player.dead = true;
-    document.getElementById('slither-final').textContent = 'Score: ' + score + ' | Kills: ' + kills;
+    const diffNames = { '0.8': 'easy', '1': 'normal', '1.3': 'hard', '1.6': 'insane' };
+    const diffKey = diffNames[document.getElementById('slither-difficulty').value] || 'normal';
+    document.getElementById('slither-final').textContent = 'Score: ' + score + ' | Kills: ' + kills + ' (' + diffKey.toUpperCase() + ')';
     document.getElementById('slither-funny').textContent = getDeathJoke();
     document.getElementById('slither-over').classList.add('show');
     state = 'dead'; cancelAnimationFrame(raf);
-    addToLeaderboard('slither', score);
+    addToLeaderboard('slither-' + diffKey, score);
   }
 
   function update() {
@@ -812,10 +1293,10 @@ function drawSkull(ctx, x, y, size, color) {
     const worldX = camX + mouseX, worldY = camY + mouseY;
     let spd = getSpeed(player, true);
     if (boosting && player.segs.length > 8) {
-      spd *= 1.65;
-      if (Math.random() < 0.18) { player.segs.pop(); orbs.push({ x: player.segs[player.segs.length-1].x, y: player.segs[player.segs.length-1].y, r: 3, color: '#d4af37', val: 0 }); }
+      spd *= 1.7;
+      if (Math.random() < 0.15) { player.segs.pop(); orbs.push({ x: player.segs[player.segs.length-1].x, y: player.segs[player.segs.length-1].y, r: 3, color: '#d4af37', val: 0 }); }
     }
-    moveSnake(player, worldX, worldY, spd);
+    moveSnake(player, worldX, worldY, spd, false, false);
     eatOrbs(player, true);
     aiSnakes.forEach(ai => { if (!ai.dead) { aiDecide(ai); eatOrbs(ai, false); } });
     checkCollisions();
@@ -969,6 +1450,16 @@ function drawSkull(ctx, x, y, size, color) {
     const count = Math.min(4 + w, 18);
     const cols = Math.min(7, Math.ceil(count / 2));
 
+    // Entry speed: starts slow, gets faster after each boss stage
+    const bossesDefeated = Math.floor((w - 1) / 5);
+    const entrySpeed = Math.min(3.0, 1.0 + bossesDefeated * 0.4);
+
+    // Whether to shoot during entry:
+    // NO shooting: waves 1-2, and first 2 waves after each boss (6-7, 11-12, 16-17...)
+    // YES shooting: waves 3-4, 8-9, 13-14, 18-19...
+    const waveInCycle = w % 5;
+    const canShootWhileEntering = (waveInCycle === 3 || waveInCycle === 4);
+
     for (let i = 0; i < count; i++) {
       const col = i % cols, row = Math.floor(i / cols);
       const formX = 50 + col * (W - 100) / (cols - 1 || 1);
@@ -982,18 +1473,28 @@ function drawSkull(ctx, x, y, size, color) {
         startY = 50 + (i % 4) * 30;
       } else {
         startX = formX;
-        startY = -40 - row * 35 - Math.random() * 30;
+        // GRADUAL WAVE ENTRY: each row enters separately
+        // Row 0 starts at -40, row 1 at -140, row 2 at -240, etc.
+        startY = -40 - row * 100 - (col * 8);
       }
+
+      // Determine ship type - add speeder ships starting wave 4
+      let shipType = i % 3 === 0 ? 'zigzag' : 'basic';
+      if (w >= 4 && i % 5 === 0) shipType = 'speeder'; // Fast ships!
 
       enemies.push({
         x: startX, y: startY,
         formationX: formX, formationY: formY,
-        w: 32, h: 32, hp: 1 + Math.floor(w / 8), maxHp: 1 + Math.floor(w / 8),
+        w: shipType === 'speeder' ? 28 : 32, h: shipType === 'speeder' ? 28 : 32,
+        hp: 1 + Math.floor(w / 8), maxHp: 1 + Math.floor(w / 8),
         vx: (0.5 + w * 0.04) * speedMult * (Math.random() > 0.5 ? 1 : -1), vy: 0,
-        type: i % 3 === 0 ? 'zigzag' : 'basic', score: 15 + w * 3, phase: Math.random() * Math.PI * 2,
+        type: shipType, score: shipType === 'speeder' ? 25 + w * 5 : 15 + w * 3,
+        phase: Math.random() * Math.PI * 2,
         shootTimer: 60 + Math.floor(Math.random() * 100),
-        shootCooldown: Math.max(60, 180 - w * 6), // Gradual: wave1=174, wave10=120, wave20=60
+        shootCooldown: Math.max(60, 180 - w * 6),
         inFormation: false, entering: true, enterY: formY,
+        entrySpeed: shipType === 'speeder' ? entrySpeed * 1.5 : entrySpeed,
+        canShootWhileEntering: canShootWhileEntering,
         diving: false, diveTimer: 100 + Math.floor(Math.random() * 120),
         isSwarm: isSwarmWave
       });
@@ -1065,11 +1566,11 @@ function drawSkull(ctx, x, y, size, color) {
 
       if (e.entering) {
         if (e.isSwarm) {
-          // Swarm entry - fly in SLOWER from sides toward formation position
+          // Swarm entry - fly in from sides toward formation position
           e.x += (e.formationX - e.x) * 0.018;
           e.y += (e.formationY - e.y) * 0.018;
-          // Fire while swarming - only on wave 10+ and rare
-          if (wave >= 10 && Math.random() < 0.004) {
+          // Fire while swarming only if allowed
+          if (e.canShootWhileEntering && Math.random() < 0.003) {
             bullets.push({ x: e.x + e.w/2 - 3, y: e.y + e.h, w: 6, h: 10, vx: 0, vy: 3, owner: 'enemy', color: '#ff4444' });
           }
           if (Math.abs(e.x - e.formationX) < 5 && Math.abs(e.y - e.formationY) < 5) {
@@ -1077,7 +1578,13 @@ function drawSkull(ctx, x, y, size, color) {
             e.entering = false; e.inFormation = true;
           }
         } else {
-          e.y += 2;
+          // Use custom entry speed (slower early waves, faster later)
+          const spd = e.entrySpeed || 2;
+          e.y += spd;
+          // Shoot while entering only if allowed (not waves 1-2, not fast waves)
+          if (e.canShootWhileEntering && Math.random() < 0.004) {
+            bullets.push({ x: e.x + e.w/2 - 3, y: e.y + e.h, w: 6, h: 10, vx: 0, vy: 2.5, owner: 'enemy', color: '#ff4444' });
+          }
           if (e.y >= e.enterY) { e.y = e.enterY; e.entering = false; e.inFormation = true; }
         }
         return;
@@ -1115,6 +1622,10 @@ function drawSkull(ctx, x, y, size, color) {
 
       if (e.type === 'minion') {
         e.x += e.vx; e.y += e.vy;
+        // Minions can shoot!
+        if (Math.random() < 0.012 && e.y > 30 && e.y < H - 50) {
+          bullets.push({ x: e.x + e.w/2 - 3, y: e.y + e.h, w: 6, h: 8, vx: 0, vy: 3.5, owner: 'enemy', color: '#ff6666' });
+        }
         if (e.y > H + 30) { const idx = enemies.indexOf(e); if (idx >= 0) enemies.splice(idx, 1); }
         return;
       }
@@ -1130,10 +1641,11 @@ function drawSkull(ctx, x, y, size, color) {
 
       if (e.type === 'bonusShip') {
         e.phase += 0.06;
+        // Ships fly through in patterns - miss them and lose the bonus!
         e.x += e.vx;
-        e.y += Math.sin(e.phase) * 1.5;
-        // Remove if off screen (missed)
-        if (e.x < -60 || e.x > W + 60) {
+        e.y += e.vy + Math.sin(e.phase) * 1.2;
+        // Remove if off screen (missed!)
+        if (e.x < -60 || e.x > W + 60 || e.y < -60 || e.y > H + 60) {
           const idx = enemies.indexOf(e);
           if (idx >= 0) enemies.splice(idx, 1);
         }
@@ -1193,6 +1705,16 @@ function drawSkull(ctx, x, y, size, color) {
         e.diveTimer--;
         if (e.diveTimer <= 0 && Math.random() < 0.008) {
           e.diving = true; e.divePhase = 0; e.diveStartX = e.x; e.diveStartY = e.y;
+          // SHOOT when starting dive!
+          if (wave >= 2) {
+            bullets.push({ x: e.x + e.w/2 - 3, y: e.y + e.h, w: 6, h: 10, vx: 0, vy: 3.5, owner: 'enemy', color: '#ff4444' });
+            // Second shot slightly aimed at player
+            const dx = player.x - e.x, dy = player.y - e.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist > 0) {
+              bullets.push({ x: e.x + e.w/2 - 3, y: e.y + e.h, w: 6, h: 10, vx: (dx/dist) * 2, vy: (dy/dist) * 2 + 1.5, owner: 'enemy', color: '#ff6644' });
+            }
+          }
         }
         e.shootTimer--;
         // Shooting chance scales with wave - very rare early
@@ -1304,15 +1826,38 @@ function drawSkull(ctx, x, y, size, color) {
     particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += 0.02; p.life--; });
     particles = particles.filter(p => p.life > 0);
 
-    // Bonus breakout enemy - spawns periodically
+    // Player-enemy collision - touching enemy ships kills you!
+    if (invincible <= 0) {
+      for (const e of enemies) {
+        if (e.type === 'bonusShip') continue; // Bonus ships don't hurt
+        const px = player.x, py = player.y, pw = player.w, ph = player.h;
+        if (px < e.x + e.w && px + pw > e.x && py < e.y + e.h && py + ph > e.y) {
+          if (player2) { player2 = null; addParticles(player.x + 44, player.y, '#ff4444', 5); invincible = 60; }
+          else { lives--; invincible = 90; addParticles(player.x + player.w/2, player.y, '#ff4444', 8); }
+          updateHUD();
+          if (lives <= 0) die(false);
+          break;
+        }
+        // Check player2 collision too
+        if (player2 && player2.x < e.x + e.w && player2.x + player2.w > e.x && player2.y < e.y + e.h && player2.y + player2.h > e.y) {
+          player2 = null; addParticles(player.x + 44, player.y, '#ff4444', 4); invincible = 40;
+          break;
+        }
+      }
+    }
+
+    // Bonus breakout enemy - spawns occasionally (not every wave)
     bonusSpawnTimer--;
     if (bonusSpawnTimer <= 0 && enemies.length > 3 && !waveClearing) {
-      bonusSpawnTimer = 350 + Math.random() * 200;
-      enemies.push({
-        x: W/2 - 22, y: -50, w: 44, h: 44, hp: 1, maxHp: 1,
-        vx: (Math.random() > 0.5 ? 1 : -1) * 2, vy: 1.5,
-        type: 'breakout', score: 50, phase: 0, entering: false, inFormation: false, diving: false
-      });
+      bonusSpawnTimer = 600 + Math.random() * 400; // Much longer delay
+      // Only 40% chance to actually spawn when timer hits
+      if (Math.random() < 0.4) {
+        enemies.push({
+          x: W/2 - 22, y: -50, w: 44, h: 44, hp: 1, maxHp: 1,
+          vx: (Math.random() > 0.5 ? 1 : -1) * 2, vy: 1.5,
+          type: 'breakout', score: 50, phase: 0, entering: false, inFormation: false, diving: false
+        });
+      }
     }
 
     // Update bonus items (flying fragments from breakout enemy)
@@ -1392,17 +1937,17 @@ function drawSkull(ctx, x, y, size, color) {
           let shipCount, spawnDelay, bonusName;
 
           if (bonusType === 0) {
-            // Type 1: Side-to-side wave
-            shipCount = 10; spawnDelay = 350; bonusName = 'WAVE ATTACK!';
+            // Type 1: Side-to-side wave - LOTS of ships!
+            shipCount = 16; spawnDelay = 380; bonusName = 'WAVE ATTACK!';
           } else if (bonusType === 1) {
             // Type 2: V-Formation dive
-            shipCount = 12; spawnDelay = 250; bonusName = 'V-FORMATION!';
+            shipCount = 20; spawnDelay = 300; bonusName = 'V-FORMATION!';
           } else if (bonusType === 2) {
-            // Type 3: Circle pattern
-            shipCount = 14; spawnDelay = 200; bonusName = 'CIRCLE SWARM!';
+            // Type 3: Circle pattern from edges
+            shipCount = 22; spawnDelay = 250; bonusName = 'CIRCLE SWARM!';
           } else {
-            // Type 4: Chaos mode - lots of fast ships
-            shipCount = 16; spawnDelay = 180; bonusName = 'CHAOS MODE!';
+            // Type 4: Chaos mode
+            shipCount = 26; spawnDelay = 200; bonusName = 'CHAOS MODE!';
           }
 
           bonusShipsTotal = shipCount;
@@ -1416,32 +1961,32 @@ function drawSkull(ctx, x, y, size, color) {
               let x, y, vx, vy;
 
               if (bonusType === 0) {
-                // Side-to-side
+                // Side-to-side waves - SLOWER
                 const fromLeft = i % 2 === 0;
                 x = fromLeft ? -40 : W + 40;
-                y = 60 + (i % 5) * 70;
-                vx = fromLeft ? 3 + Math.random() : -3 - Math.random();
-                vy = Math.sin(i * 0.7) * 0.8;
+                y = 60 + (i % 4) * 80;
+                vx = fromLeft ? 2 + Math.random() * 0.5 : -2 - Math.random() * 0.5;
+                vy = Math.sin(i * 0.7) * 0.5;
               } else if (bonusType === 1) {
-                // V-Formation from top
-                x = W/2 + (i % 2 === 0 ? -1 : 1) * (Math.floor(i/2) * 50);
-                y = -40 - Math.floor(i/2) * 30;
-                vx = (Math.random() - 0.5) * 2;
-                vy = 3 + Math.random();
+                // V-Formation from top - SLOWER
+                x = W/2 + (i % 2 === 0 ? -1 : 1) * (Math.floor(i/2) * 55);
+                y = -40 - Math.floor(i/2) * 35;
+                vx = (Math.random() - 0.5) * 1.5;
+                vy = 2 + Math.random() * 0.5;
               } else if (bonusType === 2) {
-                // Circle from edges
+                // Circle from edges - SLOWER
                 const angle = (i / shipCount) * Math.PI * 2;
-                x = W/2 + Math.cos(angle) * (W/2 + 50);
-                y = H/2 + Math.sin(angle) * (H/2 + 50);
-                vx = -Math.cos(angle) * 2.5;
-                vy = -Math.sin(angle) * 2.5;
+                x = W/2 + Math.cos(angle) * (W/2 + 60);
+                y = H/2 + Math.sin(angle) * (H/2 + 60);
+                vx = -Math.cos(angle) * 1.8;
+                vy = -Math.sin(angle) * 1.8;
               } else {
-                // Chaos - random positions and angles
+                // Chaos - SLOWER
                 const side = Math.floor(Math.random() * 4);
-                if (side === 0) { x = -40; y = Math.random() * H; vx = 3 + Math.random() * 2; vy = (Math.random() - 0.5) * 3; }
-                else if (side === 1) { x = W + 40; y = Math.random() * H; vx = -3 - Math.random() * 2; vy = (Math.random() - 0.5) * 3; }
-                else if (side === 2) { x = Math.random() * W; y = -40; vx = (Math.random() - 0.5) * 3; vy = 3 + Math.random() * 2; }
-                else { x = Math.random() * W; y = H + 40; vx = (Math.random() - 0.5) * 3; vy = -3 - Math.random() * 2; }
+                if (side === 0) { x = -40; y = Math.random() * H; vx = 2 + Math.random(); vy = (Math.random() - 0.5) * 2; }
+                else if (side === 1) { x = W + 40; y = Math.random() * H; vx = -2 - Math.random(); vy = (Math.random() - 0.5) * 2; }
+                else if (side === 2) { x = Math.random() * W; y = -40; vx = (Math.random() - 0.5) * 2; vy = 2 + Math.random(); }
+                else { x = Math.random() * W; y = H + 40; vx = (Math.random() - 0.5) * 2; vy = -2 - Math.random(); }
               }
 
               enemies.push({
@@ -1451,6 +1996,29 @@ function drawSkull(ctx, x, y, size, color) {
               });
             }, i * spawnDelay);
           }
+
+          // Safety timer - end bonus round after all ships should have passed
+          const totalDuration = shipCount * spawnDelay + 4000; // Extra 4 seconds for ships to cross
+          setTimeout(() => {
+            if (isBonusRound && !waveClearing) {
+              // Force end the bonus round
+              enemies = enemies.filter(e => e.type !== 'bonusShip');
+              waveClearing = true;
+              if (bonusShipsHit === bonusShipsTotal) {
+                const bonusScore = wave * 200;
+                score += bonusScore;
+                addTextParticle(W/2, H/2, 'PERFECT BONUS!', '#ff00ff');
+                addTextParticle(W/2, H/2 + 25, '+' + bonusScore + ' POINTS!', '#ffff00');
+              } else {
+                addTextParticle(W/2, H/2, 'BONUS ROUND OVER', '#88ff88');
+                addTextParticle(W/2, H/2 + 25, bonusShipsHit + '/' + bonusShipsTotal + ' ships', '#aaaaaa');
+              }
+              isBonusRound = false;
+              updateHUD();
+              setTimeout(() => { wave++; spawnWave(wave); waveClearing = false; }, 1600);
+            }
+          }, totalDuration);
+
           waveClearing = false;
         }, 1500);
       } else {
@@ -1522,6 +2090,45 @@ function drawSkull(ctx, x, y, size, color) {
         const sparkleX = e.x + e.w/2 + Math.sin(Date.now() * 0.01 + e.phase) * 15;
         const sparkleY = e.y + e.h/2 + Math.cos(Date.now() * 0.012 + e.phase) * 10;
         ctx.beginPath(); ctx.arc(sparkleX, sparkleY, 2, 0, Math.PI * 2); ctx.fill();
+      } else if (e.type === 'speeder') {
+        // Fast speeder ship - sleek cyan with flame trail!
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#00ffff';
+        // Main body - sleeker than regular ships
+        ctx.fillStyle = '#00cccc';
+        ctx.beginPath();
+        ctx.moveTo(e.x + e.w/2, e.y);
+        ctx.lineTo(e.x + e.w, e.y + e.h * 0.7);
+        ctx.lineTo(e.x + e.w * 0.7, e.y + e.h);
+        ctx.lineTo(e.x + e.w * 0.3, e.y + e.h);
+        ctx.lineTo(e.x, e.y + e.h * 0.7);
+        ctx.closePath();
+        ctx.fill();
+        // Cockpit
+        ctx.fillStyle = '#003333';
+        ctx.beginPath();
+        ctx.arc(e.x + e.w/2, e.y + e.h * 0.4, e.w * 0.25, 0, Math.PI * 2);
+        ctx.fill();
+        // Glowing eye
+        ctx.fillStyle = '#ff0066';
+        ctx.beginPath();
+        ctx.arc(e.x + e.w/2, e.y + e.h * 0.4, e.w * 0.12, 0, Math.PI * 2);
+        ctx.fill();
+        // Engine flames
+        ctx.fillStyle = '#ff6600';
+        const flicker = Math.sin(Date.now() * 0.02) * 3;
+        ctx.beginPath();
+        ctx.moveTo(e.x + e.w * 0.3, e.y + e.h);
+        ctx.lineTo(e.x + e.w/2, e.y + e.h + 8 + flicker);
+        ctx.lineTo(e.x + e.w * 0.7, e.y + e.h);
+        ctx.fill();
+        ctx.fillStyle = '#ffff00';
+        ctx.beginPath();
+        ctx.moveTo(e.x + e.w * 0.4, e.y + e.h);
+        ctx.lineTo(e.x + e.w/2, e.y + e.h + 5 + flicker * 0.5);
+        ctx.lineTo(e.x + e.w * 0.6, e.y + e.h);
+        ctx.fill();
+        ctx.shadowBlur = 0;
       } else {
         drawSkullShip(e.x, e.y, e.w, '#9988aa', true);
       }
@@ -1751,23 +2358,35 @@ function drawSkull(ctx, x, y, size, color) {
         const prevSeg = i > 0 ? c.segs[i - 1] : null;
         if (seg.isHead || !prevSeg) {
           seg.x += seg.dir * c.speed * 1.8;
-          let shouldTurn = seg.x < 0 || seg.x > W - GRID;
+
+          // Check if should turn (wall or mushroom)
+          let hitWall = seg.x < 0 || seg.x > W - GRID;
           const mush = hitMushroom(seg.x + GRID/2, seg.y + GRID/2);
-          if (mush) shouldTurn = true;
-          if (shouldTurn) {
+
+          if (hitWall || mush) {
             seg.dir *= -1;
-            seg.y += seg.vertDir * GRID;
             seg.x = Math.max(0, Math.min(W - GRID, seg.x));
-          }
-          // REVERSE AT BOTTOM - go back up!
-          if (seg.y >= H - GRID * 3) {
-            seg.vertDir = -1;
-          }
-          // Reverse at top - go back down
-          if (seg.y <= GRID) {
-            seg.vertDir = 1;
+
+            // Only move down/up if not at boundary
+            const atBottom = seg.y >= H - GRID * 2;
+            const atTop = seg.y <= GRID;
+
+            if (atBottom) {
+              // At bottom - must go up now
+              seg.vertDir = -1;
+            } else if (atTop) {
+              // At top - must go down now
+              seg.vertDir = 1;
+            }
+
+            // Move in current vertical direction
+            seg.y += seg.vertDir * GRID;
+
+            // Clamp to boundaries
+            seg.y = Math.max(GRID, Math.min(H - GRID * 2, seg.y));
           }
         } else {
+          // Body segments follow the head
           if (Math.abs(prevSeg.x - seg.x) > GRID * 0.7 || Math.abs(prevSeg.y - seg.y) > GRID * 0.7) {
             seg.x += (prevSeg.x - seg.x) * 0.14;
             seg.y += (prevSeg.y - seg.y) * 0.14;
@@ -2006,6 +2625,1677 @@ function drawSkull(ctx, x, y, size, color) {
   }
 
   ctx.fillStyle = '#080608'; ctx.fillRect(0,0,W,H); ctx.fillStyle = '#d4af37'; ctx.font = 'bold 22px Cinzel'; ctx.textAlign = 'center'; ctx.fillText('SKULL CENTIPEDE', W/2, H/2 - 10); ctx.fillStyle = '#e8dcc4'; ctx.font = '11px Cinzel'; ctx.fillText('Centipede reverses at bottom!', W/2, H/2 + 15); ctx.textAlign = 'left';
+})();
+
+/* ═══════════════════════════════════════════════════════════ */
+/*  GAME 6: SKULL CASTLE - DEFEND YOUR CASTLE                 */
+/* ═══════════════════════════════════════════════════════════ */
+(function() {
+  const C = document.getElementById('castle-canvas'), ctx = C.getContext('2d');
+  const W = C.width, H = C.height, GROUND = H - 50, CASTLE_X = W - 80; // Castle moved right for bigger castle
+
+  let state = 'idle', gold = 0, wave = 0, castleHP = 100, maxHP = 100, kills = 0, raf = null;
+  let enemies = [], projectiles = [], particles = [], defenders = [], heldEnemy = null;
+  let mouseX = 0, mouseY = 0, showShop = false, hoveredEnemy = null;
+  let trainedSupply = 0, trainingQueue = []; // Array of { type, timer } for multiple training slots
+  const MAX_SUPPLY = 20, TRAIN_TIME = 900; // 15 seconds at 60fps
+  let waveSpawnTimer = 0, waveEnemiesLeft = [];
+  let stormZapTimer = 0; // Storm caller cooldown
+
+  // Funny training messages
+  const TRAIN_MSGS = [
+    "Teaching skeleton to hold sword right-side up...",
+    "Explaining why biting allies is bad...",
+    "Convincing bones to stay attached...",
+    "Removing leftover evil urges...",
+    "Installing loyalty software...",
+    "Calcium supplements administered...",
+    "Teaching skeleton not to attack furniture...",
+    "Reminding skeleton which side he's on...",
+    "De-programming murder instincts...",
+    "Giving skeleton a purpose in un-life..."
+  ];
+  let currentTrainMsg = TRAIN_MSGS[0];
+
+  // UPGRADES SYSTEM - Towers with colored flags
+  const upgrades = {
+    walls: { level: 0, maxLevel: 5, cost: [80, 150, 250, 400, 600], bonus: 20 },
+    moat: { level: 0, maxLevel: 3, cost: [120, 250, 400], slowPercent: [20, 35, 50] },
+    oilPots: { level: 0, maxLevel: 3, cost: [150, 300, 500], damage: [1, 2, 3] },
+    training: { level: 0, maxLevel: 1, cost: [100], desc: 'Unlock skeleton training!' },
+    trainingSlots: { level: 0, maxLevel: 1, cost: [400], desc: 'Train 2 skeletons at once!' },
+    trainingSpeed: { level: 0, maxLevel: 3, cost: [200, 400, 700], desc: 'Faster training!' },
+    archerTower: { level: 0, maxLevel: 1, cost: [120], desc: 'Archers - GREEN tower!' },
+    archerSpeed: { level: 0, maxLevel: 3, cost: [150, 300, 500], desc: 'Archers shoot faster!' },
+    archerPower: { level: 0, maxLevel: 3, cost: [200, 400, 700], desc: 'Archers deal more damage!' },
+    bomberBros: { level: 0, maxLevel: 1, cost: [150], desc: 'Bombers - RED tower!' },
+    bomberPower: { level: 0, maxLevel: 3, cost: [200, 400, 700], desc: 'Bombers deal more damage!' },
+    stormCaller: { level: 0, maxLevel: 1, cost: [180], desc: 'Storm - BLUE tower! Zap+stun!' },
+    stormPower: { level: 0, maxLevel: 3, cost: [250, 500, 800], desc: 'Storm deals more damage!' },
+    stormSpeed: { level: 0, maxLevel: 3, cost: [200, 400, 600], desc: 'Storm zaps faster!' },
+    knights: { level: 0, maxLevel: 1, cost: [200], desc: 'Knights - BLACK tower! Horse rider!' },
+    knightPower: { level: 0, maxLevel: 3, cost: [250, 500, 800], desc: 'Knights deal more damage!' },
+    knightLaps: { level: 0, maxLevel: 2, cost: [300, 600], desc: 'Knights do more laps!' },
+    catapult: { level: 0, maxLevel: 1, cost: [250], desc: 'Catapult - PURPLE tower! Siege!' }
+  };
+  let oilTimer = 0;
+
+  // SPECIAL ABILITIES - Unlock first, then costs gold each use + cooldown
+  const abilities = {
+    arrowRain: { cooldown: 0, maxCooldown: 600, unlockCost: 80, useCost: 15, unlocked: false, desc: 'Arrow rain (15g)' },
+    lightning: { cooldown: 0, maxCooldown: 900, unlockCost: 150, useCost: 25, unlocked: false, desc: 'Storm (25g)' },
+    boulder: { cooldown: 0, maxCooldown: 1500, unlockCost: 250, useCost: 200, unlocked: false, desc: 'Boulder (200g)' }
+  };
+
+  // DEFENDER TYPES - for assignments
+  let archerTimers = []; // Each archer has own timer for staggered firing
+  let bomberUnits = [], stormCount = 0, knightUnits = [], catapultCount = 0;
+  const ARCHER_FIRE_RATE = 240; // 4 seconds at 60fps per archer volley (slower)
+  const MAX_ARCHERS = 5; // Cap on archer count
+  const ARCHER_AIM_TIME = 50; // Longer aiming before shooting
+
+  // UI button tracking
+  let abilityButtons = [], towerButtons = [];
+
+  // ENEMY TYPES - varied enemy progression
+  function createEnemy(type, x) {
+    const types = {
+      basic: { speed: 0.7, hp: 2, damage: 1, size: 26, color: '#e8dcc4', gold: 1, canPickUp: true },
+      runner: { speed: 1.6, hp: 2, damage: 1, size: 22, color: '#ffcc88', gold: 1, canPickUp: true },
+      shielder: { speed: 0.5, hp: 3, damage: 1, size: 28, color: '#4a7a9a', gold: 2, canPickUp: true, hasShield: true, arrowResist: true },
+      armored: { speed: 0.4, hp: 4, damage: 2, size: 30, color: '#666688', gold: 3, canPickUp: true, arrowResist: true },
+      archer: { speed: 0.5, hp: 2, damage: 1, size: 26, color: '#aa8866', gold: 2, canPickUp: true, ranged: true, fireRate: 150 },
+      giant: { speed: 0.3, hp: 10, damage: 3, size: 80, color: '#5a4a3a', gold: 8, canPickUp: false, isGiant: true },
+      bomber: { speed: 0.8, hp: 2, damage: 20, size: 28, color: '#ff6644', gold: 3, canPickUp: true, isBomber: true, fuseTimer: 300 },
+      ram: { speed: 0.4, hp: 12, damage: 10, size: 60, color: '#8b4513', gold: 12, canPickUp: false, isRam: true, arrowResist: true },
+      necro: { speed: 0.3, hp: 3, damage: 1, size: 30, color: '#6a0dad', gold: 5, canPickUp: true, isNecro: true, summonTimer: 0 },
+      boss: { speed: 0.25, hp: 80, damage: 5, size: 65, color: '#aa3333', gold: 25, canPickUp: false, isBoss: true }
+    };
+    const t = types[type] || types.basic;
+    return {
+      x: x || -30, y: GROUND, vx: 0, vy: 0,
+      type, speed: t.speed, hp: t.hp, maxHp: t.hp, damage: t.damage,
+      size: t.size, color: t.color, goldValue: t.gold, state: 'walk',
+      canPickUp: t.canPickUp, hasShield: t.hasShield, shieldHP: t.hasShield ? 3 : 0,
+      ranged: t.ranged, fireTimer: 0, fireRate: t.fireRate || 100,
+      isGiant: t.isGiant, isBoss: t.isBoss, isRam: t.isRam, isBomber: t.isBomber, isNecro: t.isNecro,
+      arrowResist: t.arrowResist || false, // Arrow-resistant enemies take half damage from arrows
+      fuseTimer: t.fuseTimer || 0, summonTimer: t.summonTimer || 0,
+      attackTimer: 0, phase: Math.random() * Math.PI * 2
+    };
+  }
+
+  function reset() {
+    gold = 0; wave = 0; castleHP = 100; maxHP = 100; kills = 0;
+    enemies = []; projectiles = []; particles = []; defenders = [];
+    heldEnemy = null; showShop = false;
+    trainedSupply = 0; trainingQueue = [];
+    archerTimers = [];
+    bomberUnits = []; stormCount = 0; knightUnits = []; catapultCount = 0;
+    waveSpawnTimer = 0; waveEnemiesLeft = []; stormZapTimer = 0;
+    Object.keys(upgrades).forEach(k => upgrades[k].level = 0);
+    Object.keys(abilities).forEach(k => { abilities[k].cooldown = 0; abilities[k].unlocked = false; });
+    oilTimer = 0;
+    document.getElementById('castle-over').classList.remove('show');
+    updateHUD();
+  }
+
+  function updateHUD() {
+    document.getElementById('castle-gold').textContent = gold;
+    document.getElementById('castle-wave').textContent = wave;
+    document.getElementById('castle-hp').textContent = Math.ceil(castleHP) + '/' + maxHP;
+    document.getElementById('castle-kills').textContent = kills;
+  }
+
+  function spawnWave() {
+    wave++;
+    const isBossWave = wave % 10 === 0;
+    waveEnemiesLeft = [];
+
+    // HARDER WAVES: More enemies, faster scaling
+    const baseCount = Math.min(10 + wave * 4, 70); // Even more enemies per wave
+    const giantChance = wave >= 8 ? 0.12 + (wave - 8) * 0.025 : 0; // More giants
+    const runnerChance = wave >= 4 ? 0.20 + wave * 0.015 : 0; // More runners
+    const armoredChance = wave >= 7 ? 0.10 + (wave - 7) * 0.02 : 0; // Armored enemies
+
+    // Build wave composition based on wave number
+    if (isBossWave) {
+      // Boss waves: boss + lots of giants + armored + support
+      waveEnemiesLeft.push({ type: 'boss', spawnDelay: 120 });
+      for (let i = 0; i < 6 + Math.floor(wave/4); i++) waveEnemiesLeft.push({ type: 'giant', spawnDelay: 60 });
+      for (let i = 0; i < 4 + Math.floor(wave/8); i++) waveEnemiesLeft.push({ type: 'ram', spawnDelay: 80 });
+      for (let i = 0; i < 3 + Math.floor(wave/10); i++) waveEnemiesLeft.push({ type: 'armored', spawnDelay: 70 });
+      for (let i = 0; i < 15; i++) waveEnemiesLeft.push({ type: 'basic', spawnDelay: 40 });
+    } else {
+      // Normal waves with progressive enemy types
+      for (let i = 0; i < baseCount; i++) {
+        let type = 'basic';
+        const roll = Math.random();
+        const progress = i / baseCount; // 0 to 1, harder enemies spawn later in wave
+
+        // Wave 4+: Runners (fast) - more likely as waves progress
+        if (wave >= 4 && roll < runnerChance + progress * 0.1) type = 'runner';
+        // Wave 5+: Shielders (tanky, arrow resistant)
+        if (wave >= 5 && roll < 0.15 && progress > 0.2) type = 'shielder';
+        // Wave 6+: Enemy archers
+        if (wave >= 6 && roll < 0.12 && progress > 0.25) type = 'archer';
+        // Wave 7+: Armored enemies (arrow resistant!)
+        if (wave >= 7 && roll < armoredChance && progress > 0.3) type = 'armored';
+        // Wave 8+: Giants (big & scary) - MORE of them!
+        if (wave >= 8 && roll < giantChance && progress > 0.35) type = 'giant';
+        // Wave 10+: Battering rams (arrow resistant)
+        if (wave >= 10 && roll < 0.08 + (wave-10)*0.015 && progress > 0.4) type = 'ram';
+        // Wave 13+: Enemy bombers (click or they explode on castle!)
+        if (wave >= 13 && roll < 0.12 && progress > 0.3) type = 'bomber';
+        // Wave 16+: Necromancers (summon skeletons)
+        if (wave >= 16 && roll < 0.10 && progress > 0.35) type = 'necro';
+
+        // Spawn delay: starts slow, speeds up at end of wave (faster overall)
+        const baseDelay = progress < 0.25 ? 110 : (progress < 0.5 ? 70 : (progress < 0.75 ? 45 : 30));
+        waveEnemiesLeft.push({ type, spawnDelay: baseDelay + Math.random() * 25 });
+      }
+    }
+
+    waveSpawnTimer = 0;
+
+    // Wave announcement
+    let waveText = 'Wave ' + wave;
+    let waveColor = '#d4af37';
+    if (isBossWave) { waveText = 'BOSS WAVE ' + wave + '!'; waveColor = '#ff4444'; }
+    else if (wave === 7) { waveText = 'Wave 7 - ARMORED ENEMIES! Arrows weak!'; waveColor = '#666688'; }
+    else if (wave === 8) { waveText = 'Wave 8 - GIANTS INCOMING!'; waveColor = '#ff8844'; }
+    else if (wave === 10) { waveText = 'Wave 10 - BATTERING RAMS!'; waveColor = '#8b4513'; }
+    else if (wave === 13) { waveText = 'Wave 13 - ENEMY BOMBERS! Click them!'; waveColor = '#ff6644'; }
+    else if (wave === 16) { waveText = 'Wave 16 - NECROMANCERS!'; waveColor = '#6a0dad'; }
+
+    particles.push({ x: W/2, y: 60, vx: 0, vy: 0, life: 150, text: waveText, color: waveColor, big: true });
+    updateHUD();
+  }
+
+  // Gradual wave spawning - called each frame
+  function updateWaveSpawning() {
+    if (waveEnemiesLeft.length === 0) return;
+
+    waveSpawnTimer++;
+    const next = waveEnemiesLeft[0];
+    if (waveSpawnTimer >= next.spawnDelay) {
+      enemies.push(createEnemy(next.type));
+      waveEnemiesLeft.shift();
+      waveSpawnTimer = 0;
+    }
+  }
+
+  function killEnemy(e, byDefender) {
+    if (e.state === 'dead') return;
+    e.state = 'dead'; kills++;
+    // Defenders (archers/storm) get 5-8 gold per kill
+    const goldEarned = byDefender ? (5 + Math.floor(Math.random() * 4)) : e.goldValue;
+    gold += goldEarned;
+    for (let i = 0; i < 8; i++) {
+      particles.push({ x: e.x + e.size/2, y: e.y - e.size/2, vx: (Math.random()-0.5)*5, vy: -Math.random()*5, life: 30, color: e.color, size: 4 });
+    }
+    particles.push({ x: e.x + e.size/2, y: e.y - e.size - 10, vx: 0, vy: -1.5, life: 50, text: '+' + goldEarned + 'g', color: '#d4af37' });
+    updateHUD();
+  }
+
+  // Kill with custom gold bonus and optional label
+  function killEnemyWithBonus(e, bonus, label) {
+    if (e.state === 'dead') return;
+    e.state = 'dead'; kills++;
+    gold += bonus;
+    for (let i = 0; i < 10; i++) {
+      particles.push({ x: e.x + e.size/2, y: e.y - e.size/2, vx: (Math.random()-0.5)*6, vy: -Math.random()*6, life: 35, color: e.color, size: 5 });
+    }
+    const labelText = label || 'THROW!';
+    particles.push({ x: e.x + e.size/2, y: e.y - e.size - 10, vx: 0, vy: -1.5, life: 60, text: '+' + bonus + 'g ' + labelText, color: '#ffdd44' });
+    updateHUD();
+  }
+
+  function fireProjectile(from, target, type, damage, speed, color) {
+    const dx = target.x + target.size/2 - from.x, dy = (target.y - target.size/2) - from.y;
+    const dist = Math.hypot(dx, dy);
+    projectiles.push({
+      x: from.x, y: from.y, vx: (dx/dist) * speed, vy: (dy/dist) * speed,
+      damage, type, color, size: type === 'catapult' ? 12 : type === 'mage' ? 8 : 4,
+      splash: type === 'mage' || type === 'catapult', splashRadius: type === 'catapult' ? 50 : 30
+    });
+  }
+
+  function useAbility(name) {
+    const a = abilities[name];
+    if (a.cooldown > 0 || !a.unlocked) return;
+    // Abilities cost gold to use after unlocking!
+    if (gold < a.useCost) {
+      particles.push({ x: W/2, y: H/2, vx: 0, vy: 0, life: 60, text: 'Need ' + a.useCost + 'g!', color: '#ff4444', big: true });
+      return;
+    }
+    gold -= a.useCost;
+    a.cooldown = a.maxCooldown;
+    updateHUD();
+
+    if (name === 'arrowRain') {
+      // ARROW RAIN - many arrows across the ground, damages most but survivors possible
+      for (let i = 0; i < 30; i++) {
+        setTimeout(() => {
+          const x = 30 + Math.random() * (CASTLE_X - 180);
+          projectiles.push({ x, y: -20, vx: (Math.random()-0.5)*1.5, vy: 5 + Math.random()*2, damage: 1, type: 'arrow', color: '#88ff88', size: 4 });
+        }, i * 35);
+      }
+      particles.push({ x: W/2, y: H/2, vx: 0, vy: 0, life: 80, text: 'ARROW RAIN! (-' + a.useCost + 'g)', color: '#88ff88', big: true });
+    } else if (name === 'lightning') {
+      // LIGHTNING STORM - stun + damage in wide area
+      const targets = enemies.filter(e => e.state !== 'dead' && e.x < CASTLE_X - 80);
+      targets.forEach(e => {
+        e.hp -= 2;
+        if (e.isGiant || e.isRam || e.isBoss) {
+          e.state = 'stunned';
+          e.stunTimer = 180; // 3 second stun
+        }
+        particles.push({ x: e.x + e.size/2, y: 0, vx: 0, vy: 0, life: 20, lightning: true, targetY: e.y - e.size/2 });
+        if (e.hp <= 0) killEnemy(e, true);
+      });
+      particles.push({ x: W/2, y: H/2, vx: 0, vy: 0, life: 80, text: 'LIGHTNING STORM! (-' + a.useCost + 'g)', color: '#ffff00', big: true });
+    } else if (name === 'boulder') {
+      // BOULDER - GIANT rolling boulder that wipes EVERYTHING on screen!
+      projectiles.push({
+        x: CASTLE_X - 100, y: GROUND - 40,
+        vx: -5, vy: 0,
+        damage: 100, type: 'boulder', color: '#666', size: 50,
+        splash: false, isRollingBoulder: true
+      });
+      particles.push({ x: W/2, y: H/2, vx: 0, vy: 0, life: 80, text: 'BOULDER ROLL! (-' + a.useCost + 'g)', color: '#888', big: true });
+    }
+  }
+
+  function update() {
+    // Gradual wave spawning
+    updateWaveSpawning();
+
+    // Cooldowns
+    Object.keys(abilities).forEach(k => { if (abilities[k].cooldown > 0) abilities[k].cooldown--; });
+    if (oilTimer > 0) oilTimer--;
+
+    // Training processing - multiple slots, each with own timer (ONLY during active combat)
+    const activeEnemies = enemies.filter(e => e.state !== 'dead').length;
+    const waveActive = activeEnemies > 0 || waveEnemiesLeft.length > 0;
+    if (waveActive) {
+      for (let i = trainingQueue.length - 1; i >= 0; i--) {
+        const slot = trainingQueue[i];
+        slot.timer--;
+        if (slot.timer <= 0) {
+          trainedSupply++;
+          trainingQueue.splice(i, 1);
+          particles.push({ x: W/2, y: H/2 - i * 20, vx: 0, vy: -0.5, life: 90, text: 'Training Complete! Supply: ' + trainedSupply, color: '#88ff88', big: true });
+        }
+      }
+    }
+
+    // Archer tower - EACH ARCHER fires independently at DIFFERENT TIMES
+    const allTargets = enemies.filter(e => (e.state === 'walk' || e.state === 'attack'));
+    const speedBonus = upgrades.archerSpeed.level * 25;
+    const archerTowerX = CASTLE_X - 115;
+    const archerTowerY = GROUND - 145;
+
+    for (let a = 0; a < archerTimers.length; a++) {
+      const archer = archerTimers[a];
+      archer.timer++;
+
+      // Each archer fires when THEIR timer is ready (different fire rates add variety)
+      const fireRate = ARCHER_FIRE_RATE - speedBonus + archer.offset;
+      if (archer.timer >= fireRate && allTargets.length > 0) {
+        archer.timer = 0;
+
+        // Separate targets by priority
+        const attackingCastle = allTargets.filter(e => e.state === 'attack');
+        const closeTargets = allTargets.filter(e => e.x > CASTLE_X - 350);
+        const farTargets = allTargets.filter(e => e.x <= CASTLE_X - 350); // Spawn area
+
+        const arrowDamage = 1 + upgrades.archerPower.level;
+        const misses = Math.random() < 0.18;
+
+        // Each archer has a preferred zone based on their index
+        let target;
+        const zonePreference = (a % 3); // 0=close, 1=mid, 2=far
+
+        if (zonePreference === 2 && farTargets.length > 0) {
+          // This archer prefers far targets (spawn area)
+          target = farTargets[Math.floor(Math.random() * farTargets.length)];
+        } else if (zonePreference === 0 && attackingCastle.length > 0) {
+          // This archer prefers enemies at the castle
+          target = attackingCastle[Math.floor(Math.random() * attackingCastle.length)];
+        } else if (closeTargets.length > 0) {
+          target = closeTargets[Math.floor(Math.random() * closeTargets.length)];
+        } else {
+          target = allTargets[Math.floor(Math.random() * allTargets.length)];
+        }
+
+        // Target position - shoot at GROUND where enemy is walking
+        let targetX = target ? target.x + target.size/2 : 50;
+        let targetY = GROUND - 10;
+        // Spread based on archer
+        targetX += (Math.random() - 0.5) * 50;
+        if (misses) targetX += (Math.random() - 0.5) * 80;
+        // Full range - can shoot to x=-20 (off screen left where they spawn)
+        targetX = Math.max(-20, Math.min(CASTLE_X - 150, targetX));
+
+        // Calculate trajectory to ground
+        const dx = targetX - archerTowerX;
+        const dy = targetY - archerTowerY;
+        const dist = Math.hypot(dx, dy);
+        const speed = 9;
+        const vx = (dx / dist) * speed;
+        const vy = (dy / dist) * speed * 0.6;
+
+        projectiles.push({
+          x: archerTowerX + (a * 5 - archerTimers.length * 2.5),
+          y: archerTowerY,
+          vx, vy,
+          damage: arrowDamage, type: 'towerArrow', color: '#88ff88', size: 5, gravity: true, isArcherArrow: true
+        });
+      }
+    }
+
+    // Storm caller - zaps periodically, uses stormPower and stormSpeed upgrades
+    if (stormCount > 0) {
+      stormZapTimer++;
+      // stormSpeed upgrade reduces interval (30 frames faster per level)
+      const baseInterval = 180 - stormCount * 20 - upgrades.stormSpeed.level * 30;
+      const zapInterval = Math.max(45, baseInterval); // Min 0.75 sec
+      if (stormZapTimer >= zapInterval) {
+        stormZapTimer = 0;
+        const targets = enemies.filter(e => (e.state === 'walk' || e.state === 'attack') && e.x > 40 && e.x < CASTLE_X - 80);
+        if (targets.length > 0) {
+          const target = targets[Math.floor(Math.random() * targets.length)];
+          // Lightning strike visual
+          particles.push({ x: target.x + target.size/2, y: 0, lightning: true, targetY: GROUND, life: 25 });
+          // stormPower upgrade adds damage (base 2 + 2 per level)
+          const stormDamage = 2 + upgrades.stormPower.level * 2;
+          const stunRadius = 70 + upgrades.stormPower.level * 15;
+          enemies.forEach(e => {
+            if (e.state !== 'dead' && e.state !== 'held' && Math.hypot(e.x - target.x, e.y - target.y) < stunRadius) {
+              e.hp -= stormDamage;
+              if (e.isGiant || e.isRam) { e.state = 'stunned'; e.stunTimer = 120; }
+              if (e.hp <= 0) killEnemy(e, true);
+            }
+          });
+        }
+      }
+    }
+
+    // Catapult - slow but powerful
+    if (catapultCount > 0) {
+      if (Math.random() < catapultCount * 0.002) {
+        const targets = enemies.filter(e => e.state === 'walk');
+        if (targets.length > 0) {
+          projectiles.push({
+            x: CASTLE_X - 50, y: GROUND - 120,
+            vx: -4 - Math.random() * 2, vy: -6,
+            damage: 3, type: 'catapult', color: '#666', size: 16,
+            splash: true, splashRadius: 60
+          });
+        }
+      }
+    }
+
+    // Knight logic - HORSE RIDERS that charge left, turn around, come back!
+    // knightLaps upgrade: 1 lap base, +1 per level (max 3 laps)
+    const maxLaps = 1 + upgrades.knightLaps.level;
+    for (let i = knightUnits.length - 1; i >= 0; i--) {
+      const k = knightUnits[i];
+      if (!k.laps) k.laps = 0; // Track completed laps
+      // Move based on direction
+      if (!k.returning) {
+        k.x -= 3.5; // Charge left
+        if (k.x < 30) { k.returning = true; } // Turn around at left edge
+      } else {
+        k.x += 3.5; // Charge back right
+        if (k.x > CASTLE_X - 60) {
+          k.laps++;
+          if (k.laps >= maxLaps) {
+            knightUnits.splice(i, 1); continue; // Return to castle after all laps
+          } else {
+            k.returning = false; // Do another lap!
+          }
+        }
+      }
+      k.attackTimer++;
+      // Slash every 90 frames (1.5 sec)
+      if (k.attackTimer >= 90) {
+        k.attackTimer = 0;
+        // knightPower upgrade: base 3 damage + 2 per level
+        const knightDamage = 3 + upgrades.knightPower.level * 2;
+        // Hit ONE enemy in range
+        const target = enemies.find(e => e.state !== 'dead' && e.state !== 'held' && Math.abs(e.x - k.x) < 55);
+        if (target) {
+          target.hp -= knightDamage;
+          particles.push({ x: target.x + target.size/2, y: target.y - target.size/2, vx: k.returning ? 2 : -2, vy: -2, life: 20, color: '#ffdd44', size: 8 });
+          particles.push({ x: k.x, y: k.y - 30, vx: 0, vy: 0, life: 25, text: 'SLASH ' + knightDamage + '!', color: '#ffdd44' });
+          if (target.hp <= 0) killEnemy(target, true);
+        }
+      }
+    }
+
+    // Bomber units - move faster, waiting to be clicked to explode
+    for (let i = bomberUnits.length - 1; i >= 0; i--) {
+      const b = bomberUnits[i];
+      b.x -= 1.2; // Move quicker toward enemies
+      if (b.x < 30) bomberUnits.splice(i, 1); // Remove if off screen
+    }
+
+    // Oil pots
+    if (upgrades.oilPots.level > 0 && oilTimer <= 0) {
+      const nearCastle = enemies.filter(e => e.state === 'walk' && e.x > CASTLE_X - 120 && e.x < CASTLE_X - 60);
+      if (nearCastle.length > 0) {
+        nearCastle.forEach(e => {
+          e.hp -= upgrades.oilPots.damage[upgrades.oilPots.level - 1];
+          particles.push({ x: e.x + e.size/2, y: e.y - e.size, vx: (Math.random()-0.5)*2, vy: -2, life: 25, color: '#ff6600', size: 6 });
+          if (e.hp <= 0) killEnemy(e, false);
+        });
+        oilTimer = 180;
+      }
+    }
+
+    // Update projectiles
+    for (let i = projectiles.length - 1; i >= 0; i--) {
+      const p = projectiles[i];
+      p.x += p.vx; p.y += p.vy;
+      // Gravity for arcing projectiles
+      if (p.type === 'boulder' || p.type === 'catapult' || p.type === 'bomb') p.vy += 0.25;
+      if (p.gravity || p.type === 'towerArrow') p.vy += 0.15; // Slower gravity for arrows
+      // Tower arrows hit ground
+      if (p.type === 'towerArrow' && p.y >= GROUND - 5) {
+        projectiles.splice(i, 1); continue;
+      }
+      // Bombs explode on ground
+      if (p.type === 'bomb' && p.y >= GROUND - 5) {
+        enemies.forEach(e2 => {
+          if (e2.state !== 'dead' && Math.hypot(e2.x + e2.size/2 - p.x, e2.y - e2.size/2 - p.y) < p.splashRadius) {
+            e2.hp -= p.damage;
+            if (e2.hp <= 0) killEnemy(e2, false);
+          }
+        });
+        for (let k = 0; k < 12; k++) particles.push({ x: p.x, y: p.y, vx: (Math.random()-0.5)*8, vy: -Math.random()*6, life: 25, color: '#ff6644', size: 6 });
+        projectiles.splice(i, 1); continue;
+      }
+      if (p.y > GROUND + 20 || p.x < -50 || p.x > W + 50) { projectiles.splice(i, 1); continue; }
+
+      // ROLLING BOULDER - wipes everything it touches, stays on ground
+      if (p.isRollingBoulder) {
+        p.y = GROUND - p.size/2; // Stay on ground
+        // Crush all enemies it touches
+        enemies.forEach(e => {
+          if (e.state !== 'dead' && Math.abs(e.x + e.size/2 - p.x) < p.size/2 + e.size/2) {
+            e.hp = 0;
+            killEnemy(e, false);
+            particles.push({ x: e.x, y: e.y - e.size/2, vx: (Math.random()-0.5)*4, vy: -3, life: 20, color: '#888', size: 6 });
+          }
+        });
+        // Remove when off screen
+        if (p.x < -p.size) {
+          projectiles.splice(i, 1);
+          continue;
+        }
+      }
+
+      // Hit enemies (skip held enemies - being picked up)
+      for (let j = 0; j < enemies.length; j++) {
+        const e = enemies[j];
+        if (e.state === 'dead' || e.state === 'held') continue;
+        if (p.x > e.x && p.x < e.x + e.size && p.y > e.y - e.size && p.y < e.y) {
+          if (p.splash) {
+            enemies.forEach(e2 => {
+              if (e2.state !== 'dead' && e2.state !== 'held' && Math.hypot(e2.x + e2.size/2 - p.x, e2.y - e2.size/2 - p.y) < p.splashRadius) {
+                e2.hp -= p.damage;
+                if (e2.hp <= 0) killEnemy(e2, false);
+              }
+            });
+            for (let k = 0; k < 10; k++) particles.push({ x: p.x, y: p.y, vx: (Math.random()-0.5)*6, vy: (Math.random()-0.5)*6, life: 20, color: p.color, size: 5 });
+          } else {
+            // Arrow-resistant enemies take reduced damage from arrows
+            let dmg = p.damage;
+            if (p.isArcherArrow && e.arrowResist) {
+              dmg = Math.max(1, Math.floor(p.damage * 0.5)); // Half damage, min 1
+              particles.push({ x: e.x + e.size/2, y: e.y - e.size, vx: 0, vy: -1, life: 20, text: 'RESIST', color: '#6666aa', size: 8 });
+            }
+            if (e.hasShield && e.shieldHP > 0) e.shieldHP -= dmg;
+            else e.hp -= dmg;
+            if (e.hp <= 0) {
+              // Archer arrows give 5-10 gold (headshot bonus)
+              if (p.isArcherArrow) {
+                const headshot = Math.random() < 0.3; // 30% headshot chance
+                const goldAmount = headshot ? 10 : (5 + Math.floor(Math.random() * 4));
+                killEnemyWithBonus(e, goldAmount, headshot ? 'HEADSHOT!' : 'ARROW!');
+              } else {
+                killEnemy(e, false);
+              }
+            }
+          }
+          projectiles.splice(i, 1);
+          break;
+        }
+      }
+    }
+
+    // Update enemies
+    const moatSlow = upgrades.moat.level > 0 ? (100 - upgrades.moat.slowPercent[upgrades.moat.level - 1]) / 100 : 1;
+    for (let i = enemies.length - 1; i >= 0; i--) {
+      const e = enemies[i];
+      if (e.state === 'dead') { enemies.splice(i, 1); continue; }
+      if (e.state === 'held') { e.x = mouseX - e.size/2; e.y = mouseY; continue; }
+
+      if (e.state === 'fall') {
+        e.vy += 0.5; e.x += e.vx; e.y += e.vy;
+        // Track peak height
+        if (!e.peakHeight || e.y < e.peakHeight) e.peakHeight = e.y;
+        if (e.y >= GROUND) {
+          const heightReached = GROUND - e.peakHeight; // How high they went
+          // CAPTURE: Drop ANYWHERE near castle (left side of castle)
+          const castleLeft = CASTLE_X - 120;
+          const maxTrainingSlots = upgrades.trainingSlots.level > 0 ? 2 : 1;
+          const canCapture = e.x > castleLeft - 60 && e.canPickUp && upgrades.training.level > 0 &&
+                            trainingQueue.length < maxTrainingSlots && trainedSupply < MAX_SUPPLY;
+          if (canCapture) {
+            e.state = 'dead';
+            // Add to training queue with its own timer
+            // Training speed upgrade reduces time (20% faster per level)
+            const trainTime = Math.floor(TRAIN_TIME * (1 - upgrades.trainingSpeed.level * 0.2));
+            trainingQueue.push({ type: e.type, timer: trainTime, maxTimer: trainTime });
+            currentTrainMsg = TRAIN_MSGS[Math.floor(Math.random() * TRAIN_MSGS.length)];
+            particles.push({ x: CASTLE_X - 60, y: GROUND - 80 - (trainingQueue.length - 1) * 25, vx: 0, vy: 0, life: 60, text: 'CAPTURED! Slot ' + trainingQueue.length, color: '#88ffff' });
+          } else if (e.peakHeight < 0) {
+            // REALLY high throw - went ABOVE the screen! 15g bonus
+            killEnemyWithBonus(e, 15, 'SKY HIGH!');
+          } else if (heightReached > 150) {
+            // High throw (but not above screen) - 10-12g
+            const throwBonus = 10 + Math.floor(Math.random() * 3);
+            killEnemyWithBonus(e, throwBonus);
+          } else {
+            // Not thrown high enough - skeleton SURVIVES!
+            e.y = GROUND; e.state = 'walk'; e.vx = 0; e.vy = 0; e.peakHeight = null;
+            particles.push({ x: e.x + e.size/2, y: e.y - e.size, vx: 0, vy: -1, life: 40, text: 'Too low!', color: '#ff8888' });
+          }
+        }
+        continue;
+      }
+
+      // Stunned state (giants getting back up)
+      if (e.state === 'stunned') {
+        e.stunTimer--;
+        if (e.stunTimer <= 0) {
+          e.state = 'walk';
+        }
+        continue;
+      }
+
+      // Flying enemies bob up and down
+      if (e.flying) { e.phase += 0.05; e.y = GROUND - 80 + Math.sin(e.phase) * 15; }
+
+      // Ranged enemies shoot
+      if (e.ranged && e.state === 'walk' && e.x > 100) {
+        e.fireTimer++;
+        if (e.fireTimer >= e.fireRate) {
+          e.fireTimer = 0;
+          projectiles.push({ x: e.x + e.size, y: e.y - e.size/2, vx: 4, vy: 0, damage: e.damage, type: 'enemyArrow', color: '#ff6666', size: 3, isEnemy: true });
+        }
+      }
+
+      // ENEMY BOMBER - fuse countdown, click to defuse or they explode!
+      if (e.isBomber && e.state === 'walk') {
+        e.fuseTimer--;
+        if (e.fuseTimer <= 0) {
+          // EXPLODE on castle!
+          if (e.x > CASTLE_X - 150) {
+            castleHP -= e.damage;
+            particles.push({ x: e.x, y: e.y - 20, vx: 0, vy: 0, life: 60, text: 'BOOM! -' + e.damage, color: '#ff4444', big: true });
+            for (let k = 0; k < 15; k++) particles.push({ x: e.x, y: e.y - 20, vx: (Math.random()-0.5)*10, vy: -Math.random()*8, life: 30, color: '#ff6644', size: 8 });
+            updateHUD();
+          }
+          e.state = 'dead';
+          continue;
+        }
+      }
+
+      // NECROMANCER - summons basic skeletons
+      if (e.isNecro && e.state === 'walk') {
+        e.summonTimer++;
+        if (e.summonTimer >= 300) { // Every 5 seconds
+          e.summonTimer = 0;
+          enemies.push(createEnemy('basic', e.x - 30));
+          particles.push({ x: e.x, y: e.y - e.size, vx: 0, vy: 0, life: 40, text: 'SUMMON!', color: '#6a0dad' });
+        }
+      }
+
+      // Enemies stop at LEFT CORNER of castle (no door - they just attack the wall)
+      const castleWall = CASTLE_X - 120;
+
+      if (e.state === 'walk') {
+        const inMoat = e.x > CASTLE_X - 200 && e.x < CASTLE_X - 140;
+        const speed = inMoat ? e.speed * moatSlow : e.speed;
+        // Stop BEFORE castle wall (account for enemy size + small gap so they don't overlap)
+        const stopPoint = castleWall - e.size - 5;
+        if (e.x + speed < stopPoint) e.x += speed;
+        else { e.x = stopPoint; e.state = 'attack'; e.attackTimer = 0; }
+      }
+
+      if (e.state === 'attack') {
+        e.attackTimer++;
+        const attackSpeed = e.isBoss ? 90 : (e.isRam ? 120 : 60);
+        if (e.attackTimer >= attackSpeed) {
+          e.attackTimer = 0;
+          castleHP -= e.damage;
+          particles.push({ x: castleWall + 5, y: GROUND - 50, vx: -2, vy: -1, life: 20, color: '#ff4444', size: 6 });
+          updateHUD();
+          if (castleHP <= 0) { castleHP = 0; gameOver(); return; }
+        }
+      }
+    }
+
+    // Enemy projectiles hit castle/defenders
+    projectiles.filter(p => p.isEnemy).forEach(p => {
+      if (p.x > CASTLE_X - 60) {
+        castleHP -= p.damage;
+        updateHUD();
+        projectiles.splice(projectiles.indexOf(p), 1);
+      }
+    });
+
+    // Update particles
+    particles = particles.filter(p => { p.x += p.vx || 0; p.y += p.vy || 0; return --p.life > 0; });
+
+    // Wave complete check - must wait for all enemies to spawn AND be killed
+    const alive = enemies.filter(e => e.state !== 'dead');
+    if (wave > 0 && alive.length === 0 && waveEnemiesLeft.length === 0 && !particles.some(p => p.text && p.text.includes('Wave'))) {
+      // Auto-complete all training in progress when wave ends
+      if (trainingQueue.length > 0) {
+        const completed = trainingQueue.length;
+        trainedSupply += completed;
+        trainingQueue = [];
+        particles.push({ x: W/2, y: H/2 - 30, vx: 0, vy: -0.5, life: 90, text: 'Training Auto-Complete! +' + completed + ' Supply: ' + trainedSupply, color: '#88ffff', big: true });
+      }
+      particles.push({ x: W/2, y: H/2, vx: 0, vy: 0, life: 180, text: 'Wave Complete! Click for next wave', color: '#88ff88', big: true });
+    }
+  }
+
+  function drawSkullEnemy(e) {
+    const s = e.size * 0.4; // scale factor
+    const cx = e.x + e.size/2, baseY = e.y;
+    const walkBob = e.state === 'walk' ? Math.sin(Date.now() * 0.01 + e.phase) * 2 : 0;
+    const legSwing = e.state === 'walk' ? Math.sin(Date.now() * 0.012 + e.phase) * 8 : 0;
+
+    // HOVER HIGHLIGHT - glowing ring around hovered enemy
+    if (hoveredEnemy === e) {
+      const pulse = 0.6 + Math.sin(Date.now() * 0.01) * 0.3;
+      ctx.strokeStyle = e.canPickUp ? 'rgba(100, 255, 100, ' + pulse + ')' : 'rgba(255, 200, 50, ' + pulse + ')';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(cx, baseY - e.size/2, e.size * 0.6, 0, Math.PI * 2);
+      ctx.stroke();
+      // Show action hint
+      ctx.fillStyle = e.canPickUp ? '#88ff88' : '#ffcc33';
+      ctx.font = '9px Arial'; ctx.textAlign = 'center';
+      ctx.fillText(e.canPickUp ? 'GRAB' : 'TAP!', cx, baseY - e.size - 5);
+      ctx.textAlign = 'left';
+    }
+
+    // Skull head
+    ctx.fillStyle = e.color;
+    ctx.beginPath(); ctx.arc(cx, baseY - s * 2.8 + walkBob, s * 0.7, 0, Math.PI * 2); ctx.fill();
+    // Eye sockets
+    ctx.fillStyle = e.isBoss ? '#ff0000' : '#1a0a1a';
+    ctx.beginPath(); ctx.arc(cx - s * 0.25, baseY - s * 2.9 + walkBob, s * 0.15, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + s * 0.25, baseY - s * 2.9 + walkBob, s * 0.15, 0, Math.PI * 2); ctx.fill();
+    // Nose hole
+    ctx.beginPath();
+    ctx.moveTo(cx, baseY - s * 2.7 + walkBob);
+    ctx.lineTo(cx - s * 0.1, baseY - s * 2.5 + walkBob);
+    ctx.lineTo(cx + s * 0.1, baseY - s * 2.5 + walkBob);
+    ctx.fill();
+    // Teeth
+    ctx.fillStyle = '#fff';
+    for (let i = 0; i < 3; i++) {
+      ctx.fillRect(cx - s * 0.3 + i * s * 0.2, baseY - s * 2.4 + walkBob, s * 0.15, s * 0.2);
+    }
+
+    // Body (spine)
+    ctx.strokeStyle = e.color; ctx.lineWidth = s * 0.15;
+    ctx.beginPath(); ctx.moveTo(cx, baseY - s * 2.1 + walkBob); ctx.lineTo(cx, baseY - s * 0.8); ctx.stroke();
+    // Ribs
+    for (let i = 0; i < 3; i++) {
+      const ribY = baseY - s * 1.9 + i * s * 0.35 + walkBob;
+      ctx.beginPath(); ctx.moveTo(cx - s * 0.4, ribY); ctx.lineTo(cx + s * 0.4, ribY); ctx.stroke();
+    }
+    // Arms
+    ctx.beginPath(); ctx.moveTo(cx, baseY - s * 1.8 + walkBob); ctx.lineTo(cx - s * 0.7, baseY - s * 1.3 + walkBob); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx, baseY - s * 1.8 + walkBob); ctx.lineTo(cx + s * 0.7, baseY - s * 1.3 + walkBob); ctx.stroke();
+    // Legs
+    ctx.beginPath(); ctx.moveTo(cx, baseY - s * 0.8); ctx.lineTo(cx - s * 0.4 - legSwing * 0.3, baseY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx, baseY - s * 0.8); ctx.lineTo(cx + s * 0.4 + legSwing * 0.3, baseY); ctx.stroke();
+
+    // Shield for shielders
+    if (e.hasShield && e.shieldHP > 0) {
+      ctx.fillStyle = '#5588bb';
+      ctx.fillRect(cx + s * 0.6, baseY - s * 2.2 + walkBob, s * 0.3, s * 1.5);
+    }
+    // Wings for flyers
+    if (e.flying) {
+      ctx.fillStyle = '#7755aa';
+      const flap = Math.sin(e.phase * 3) * 15;
+      ctx.beginPath();
+      ctx.moveTo(cx - s * 0.5, baseY - s * 2 + walkBob);
+      ctx.quadraticCurveTo(cx - s * 1.5, baseY - s * 2.5 - flap, cx - s * 0.6, baseY - s * 1.2 + walkBob);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(cx + s * 0.5, baseY - s * 2 + walkBob);
+      ctx.quadraticCurveTo(cx + s * 1.5, baseY - s * 2.5 - flap, cx + s * 0.6, baseY - s * 1.2 + walkBob);
+      ctx.fill();
+    }
+    // Boss horns & crown
+    if (e.isBoss) {
+      ctx.fillStyle = '#661111';
+      ctx.beginPath(); ctx.moveTo(cx - s * 0.4, baseY - s * 3.2 + walkBob);
+      ctx.lineTo(cx - s * 0.6, baseY - s * 4 + walkBob); ctx.lineTo(cx - s * 0.2, baseY - s * 3.2 + walkBob); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(cx + s * 0.4, baseY - s * 3.2 + walkBob);
+      ctx.lineTo(cx + s * 0.6, baseY - s * 4 + walkBob); ctx.lineTo(cx + s * 0.2, baseY - s * 3.2 + walkBob); ctx.fill();
+    }
+    // Archer bow
+    if (e.ranged) {
+      ctx.strokeStyle = '#8b4513'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(cx + s * 0.9, baseY - s * 1.5 + walkBob, s * 0.5, -Math.PI/2, Math.PI/2); ctx.stroke();
+    }
+    // ENEMY BOMBER - bomb on back with fuse!
+    if (e.isBomber) {
+      ctx.fillStyle = '#333';
+      ctx.beginPath(); ctx.arc(cx - s * 0.5, baseY - s * 1.5 + walkBob, s * 0.5, 0, Math.PI * 2); ctx.fill();
+      // Sparking fuse
+      const fuseRemaining = e.fuseTimer / 300;
+      ctx.strokeStyle = fuseRemaining > 0.3 ? '#ff6644' : '#ff0000'; ctx.lineWidth = 2;
+      const spark = Math.sin(Date.now() * 0.03) * 3;
+      ctx.beginPath(); ctx.moveTo(cx - s * 0.5, baseY - s * 2 + walkBob); ctx.lineTo(cx - s * 0.5 + spark, baseY - s * 2.3 + walkBob); ctx.stroke();
+      ctx.fillStyle = fuseRemaining > 0.3 ? '#ffaa00' : '#ff0000';
+      ctx.beginPath(); ctx.arc(cx - s * 0.5 + spark, baseY - s * 2.3 + walkBob, 3, 0, Math.PI * 2); ctx.fill();
+      // Warning text
+      ctx.fillStyle = '#ff0000'; ctx.font = '9px Arial'; ctx.textAlign = 'center';
+      ctx.fillText('CLICK!', cx, baseY - s * 3.5);
+      ctx.textAlign = 'left';
+    }
+    // BATTERING RAM - drawn as horizontal log with skull on front
+    if (e.isRam) {
+      ctx.fillStyle = '#5a4030';
+      ctx.fillRect(cx - s * 1.2, baseY - s * 1.2, s * 2.4, s * 0.8);
+      // Ram head (metal skull)
+      ctx.fillStyle = '#666';
+      ctx.beginPath(); ctx.arc(cx + s * 1.2, baseY - s * 0.8, s * 0.5, 0, Math.PI * 2); ctx.fill();
+    }
+    // NECROMANCER - purple robes and staff
+    if (e.isNecro) {
+      // Robe overlay
+      ctx.fillStyle = 'rgba(106, 13, 173, 0.7)';
+      ctx.beginPath();
+      ctx.moveTo(cx - s * 0.5, baseY - s * 2 + walkBob);
+      ctx.lineTo(cx + s * 0.5, baseY - s * 2 + walkBob);
+      ctx.lineTo(cx + s * 0.6, baseY);
+      ctx.lineTo(cx - s * 0.6, baseY);
+      ctx.fill();
+      // Staff
+      ctx.strokeStyle = '#4a3020'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(cx + s * 0.8, baseY - s * 2.5 + walkBob); ctx.lineTo(cx + s * 0.8, baseY); ctx.stroke();
+      ctx.fillStyle = '#ff00ff';
+      ctx.beginPath(); ctx.arc(cx + s * 0.8, baseY - s * 2.7 + walkBob, 4, 0, Math.PI * 2); ctx.fill();
+    }
+    // HP bar for tough enemies
+    if (e.maxHp > 1) {
+      ctx.fillStyle = '#333'; ctx.fillRect(cx - s * 0.6, baseY - s * 3.8, s * 1.2, 4);
+      ctx.fillStyle = e.hp > e.maxHp * 0.3 ? '#4a4' : '#a44';
+      ctx.fillRect(cx - s * 0.6, baseY - s * 3.8, s * 1.2 * (e.hp / e.maxHp), 4);
+    }
+    // Stunned effect - stars around head
+    if (e.state === 'stunned') {
+      ctx.fillStyle = '#ffff00';
+      for (let i = 0; i < 3; i++) {
+        const angle = Date.now() * 0.005 + i * Math.PI * 2 / 3;
+        const starX = cx + Math.cos(angle) * s;
+        const starY = baseY - s * 3.2 + Math.sin(angle) * s * 0.5;
+        ctx.beginPath(); ctx.arc(starX, starY, 3, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+  }
+
+  function draw() {
+    // Sky gradient
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, '#0a0515'); grad.addColorStop(0.6, '#1a0a2a'); grad.addColorStop(1, '#2d1f3d');
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+
+    // Stars
+    ctx.fillStyle = '#fff';
+    for (let i = 0; i < 20; i++) {
+      ctx.globalAlpha = 0.3 + Math.sin(Date.now() * 0.002 + i) * 0.2;
+      ctx.beginPath(); ctx.arc((i * 47) % W, (i * 23) % (H - 100), 1, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    // Moon
+    ctx.fillStyle = '#ffffcc';
+    ctx.beginPath(); ctx.arc(60, 50, 25, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#0a0515';
+    ctx.beginPath(); ctx.arc(50, 45, 22, 0, Math.PI * 2); ctx.fill();
+
+    // Ground
+    ctx.fillStyle = '#2d1f3d'; ctx.fillRect(0, GROUND, W, H - GROUND);
+
+    // Moat (wider for bigger castle)
+    if (upgrades.moat.level > 0) {
+      ctx.fillStyle = '#1a3a5a';
+      ctx.fillRect(CASTLE_X - 200, GROUND, 90, 20);
+      ctx.fillStyle = '#2a5a8a';
+      for (let i = 0; i < 6; i++) {
+        ctx.beginPath();
+        ctx.arc(CASTLE_X - 195 + i * 15 + Math.sin(Date.now() * 0.003 + i) * 3, GROUND + 10, 5, 0, Math.PI);
+        ctx.fill();
+      }
+    }
+
+    // BIGGER CASTLE with multiple towers
+    const castleLeft = CASTLE_X - 120; // Left wall where enemies attack
+
+    // Main castle body
+    ctx.fillStyle = '#4a3a5a';
+    ctx.fillRect(castleLeft, GROUND - 100, 160, 100);
+
+    // Battlements on main castle
+    for (let i = 0; i < 7; i++) {
+      ctx.fillRect(castleLeft + i * 24, GROUND - 115, 18, 15);
+    }
+
+    // Skull decoration
+    drawSkull(ctx, CASTLE_X - 20, GROUND - 55, 30, '#888');
+
+    // Training glow at castle wall - MULTIPLE SLOTS with separate progress bars
+    // Each slot: [BAR] (CIRCLE with number) - stacked vertically
+    for (let i = 0; i < trainingQueue.length; i++) {
+      const slot = trainingQueue[i];
+      const slotY = GROUND - 15 - i * 18; // Each slot on its own row
+      const pulse = 0.5 + Math.sin(Date.now() * 0.005 + i * 0.5) * 0.3;
+
+      // Progress bar on left
+      const progress = 1 - slot.timer / (slot.maxTimer || TRAIN_TIME);
+      ctx.fillStyle = '#333';
+      ctx.fillRect(castleLeft + 5, slotY, 35, 6);
+      ctx.fillStyle = i === 0 ? '#88ffff' : '#ff88ff';
+      ctx.fillRect(castleLeft + 5, slotY, 35 * progress, 6);
+      ctx.strokeStyle = '#666'; ctx.lineWidth = 1;
+      ctx.strokeRect(castleLeft + 5, slotY, 35, 6);
+
+      // Glow circle to the RIGHT of the bar
+      ctx.fillStyle = 'rgba(100, 180, 255, ' + pulse + ')';
+      ctx.beginPath();
+      ctx.arc(castleLeft + 50, slotY + 3, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = i === 0 ? '#88ffff' : '#ff88ff';
+      ctx.stroke();
+
+      // Slot number inside circle
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 9px Arial'; ctx.textAlign = 'center';
+      ctx.fillText((i + 1).toString(), castleLeft + 50, slotY + 6);
+      ctx.textAlign = 'left';
+    }
+
+    // Wall upgrade (at castle entrance)
+    if (upgrades.walls.level > 0) {
+      ctx.fillStyle = '#5a4a6a';
+      const wallH = 15 + upgrades.walls.level * 8;
+      ctx.fillRect(castleLeft - 15, GROUND - wallH, 12, wallH);
+    }
+
+    // ========== TOWERS FOR EACH UNIT TYPE ==========
+    const towerWidth = 28, towerSpacing = 32;
+    let towerX = castleLeft + 60; // Other towers start here
+
+    // ARCHER TOWER - GREEN FLAG (FAR LEFT of castle for better aim)
+    if (upgrades.archerTower.level > 0) {
+      const archerTowerX = castleLeft + 5; // Far left position
+      ctx.fillStyle = '#3a4a3a';
+      ctx.fillRect(archerTowerX, GROUND - 150, towerWidth, 50);
+      ctx.fillRect(archerTowerX - 3, GROUND - 155, towerWidth + 6, 8);
+      // Flag pole + GREEN flag
+      ctx.strokeStyle = '#5a4030'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(archerTowerX + towerWidth/2, GROUND - 155); ctx.lineTo(archerTowerX + towerWidth/2, GROUND - 185); ctx.stroke();
+      const flagWave = Math.sin(Date.now() * 0.004) * 3;
+      ctx.fillStyle = trainedSupply > 0 ? '#44ff44' : '#336633';
+      ctx.beginPath();
+      ctx.moveTo(archerTowerX + towerWidth/2, GROUND - 185);
+      ctx.lineTo(archerTowerX + towerWidth/2 + 18 + flagWave, GROUND - 177);
+      ctx.lineTo(archerTowerX + towerWidth/2, GROUND - 169);
+      ctx.fill();
+      // Archer count
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 10px Arial'; ctx.textAlign = 'center';
+      ctx.fillText(archerTimers.length, archerTowerX + towerWidth/2, GROUND - 135);
+      ctx.textAlign = 'left';
+    }
+
+    // BOMBER TOWER - RED FLAG
+    if (upgrades.bomberBros.level > 0) {
+      ctx.fillStyle = '#4a3a3a';
+      ctx.fillRect(towerX, GROUND - 150, towerWidth, 50);
+      ctx.fillRect(towerX - 3, GROUND - 155, towerWidth + 6, 8);
+      // RED flag
+      ctx.strokeStyle = '#5a4030'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(towerX + towerWidth/2, GROUND - 155); ctx.lineTo(towerX + towerWidth/2, GROUND - 185); ctx.stroke();
+      const flagWave = Math.sin(Date.now() * 0.004 + 1) * 3;
+      ctx.fillStyle = trainedSupply > 0 ? '#ff4444' : '#663333';
+      ctx.beginPath();
+      ctx.moveTo(towerX + towerWidth/2, GROUND - 185);
+      ctx.lineTo(towerX + towerWidth/2 + 18 + flagWave, GROUND - 177);
+      ctx.lineTo(towerX + towerWidth/2, GROUND - 169);
+      ctx.fill();
+      // Bomber count
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 10px Arial'; ctx.textAlign = 'center';
+      ctx.fillText(bomberUnits.length, towerX + towerWidth/2, GROUND - 135);
+      ctx.textAlign = 'left';
+      towerX += towerSpacing;
+    }
+
+    // STORM TOWER - BLUE FLAG
+    if (upgrades.stormCaller.level > 0) {
+      ctx.fillStyle = '#3a3a4a';
+      ctx.fillRect(towerX, GROUND - 150, towerWidth, 50);
+      ctx.fillRect(towerX - 3, GROUND - 155, towerWidth + 6, 8);
+      // BLUE flag
+      ctx.strokeStyle = '#5a4030'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(towerX + towerWidth/2, GROUND - 155); ctx.lineTo(towerX + towerWidth/2, GROUND - 185); ctx.stroke();
+      const flagWave = Math.sin(Date.now() * 0.004 + 2) * 3;
+      ctx.fillStyle = trainedSupply > 0 ? '#4488ff' : '#333366';
+      ctx.beginPath();
+      ctx.moveTo(towerX + towerWidth/2, GROUND - 185);
+      ctx.lineTo(towerX + towerWidth/2 + 18 + flagWave, GROUND - 177);
+      ctx.lineTo(towerX + towerWidth/2, GROUND - 169);
+      ctx.fill();
+      // Storm count
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 10px Arial'; ctx.textAlign = 'center';
+      ctx.fillText(stormCount, towerX + towerWidth/2, GROUND - 135);
+      ctx.textAlign = 'left';
+      towerX += towerSpacing;
+    }
+
+    // KNIGHT TOWER - BLACK FLAG
+    if (upgrades.knights.level > 0) {
+      ctx.fillStyle = '#3a3a3a';
+      ctx.fillRect(towerX, GROUND - 150, towerWidth, 50);
+      ctx.fillRect(towerX - 3, GROUND - 155, towerWidth + 6, 8);
+      // BLACK flag
+      ctx.strokeStyle = '#5a4030'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(towerX + towerWidth/2, GROUND - 155); ctx.lineTo(towerX + towerWidth/2, GROUND - 185); ctx.stroke();
+      const flagWave = Math.sin(Date.now() * 0.004 + 3) * 3;
+      ctx.fillStyle = trainedSupply > 0 ? '#222222' : '#111111';
+      ctx.beginPath();
+      ctx.moveTo(towerX + towerWidth/2, GROUND - 185);
+      ctx.lineTo(towerX + towerWidth/2 + 18 + flagWave, GROUND - 177);
+      ctx.lineTo(towerX + towerWidth/2, GROUND - 169);
+      ctx.fill();
+      ctx.strokeStyle = '#444'; ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 10px Arial'; ctx.textAlign = 'center';
+      ctx.fillText(knightUnits.length, towerX + towerWidth/2, GROUND - 135);
+      ctx.textAlign = 'left';
+      towerX += towerSpacing;
+    }
+
+    // CATAPULT TOWER - PURPLE FLAG
+    if (upgrades.catapult.level > 0) {
+      ctx.fillStyle = '#4a3a4a';
+      ctx.fillRect(towerX, GROUND - 150, towerWidth, 50);
+      ctx.fillRect(towerX - 3, GROUND - 155, towerWidth + 6, 8);
+      // PURPLE flag
+      ctx.strokeStyle = '#5a4030'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(towerX + towerWidth/2, GROUND - 155); ctx.lineTo(towerX + towerWidth/2, GROUND - 185); ctx.stroke();
+      const flagWave = Math.sin(Date.now() * 0.004 + 4) * 3;
+      ctx.fillStyle = trainedSupply > 0 ? '#9944ff' : '#443366';
+      ctx.beginPath();
+      ctx.moveTo(towerX + towerWidth/2, GROUND - 185);
+      ctx.lineTo(towerX + towerWidth/2 + 18 + flagWave, GROUND - 177);
+      ctx.lineTo(towerX + towerWidth/2, GROUND - 169);
+      ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 10px Arial'; ctx.textAlign = 'center';
+      ctx.fillText(catapultCount, towerX + towerWidth/2, GROUND - 135);
+      ctx.textAlign = 'left';
+    }
+
+    // HP BAR - at BOTTOM of castle
+    const hpBarW = 100;
+    ctx.fillStyle = '#333'; ctx.fillRect(castleLeft + 5, GROUND + 8, hpBarW, 10);
+    ctx.fillStyle = castleHP > maxHP * 0.3 ? '#4a4' : '#a44';
+    ctx.fillRect(castleLeft + 5, GROUND + 8, hpBarW * (castleHP / maxHP), 10);
+    ctx.strokeStyle = '#666'; ctx.lineWidth = 1; ctx.strokeRect(castleLeft + 5, GROUND + 8, hpBarW, 10);
+    ctx.fillStyle = '#fff'; ctx.font = '8px Arial';
+    ctx.fillText(Math.ceil(castleHP) + '/' + maxHP, castleLeft + 110, GROUND + 16);
+
+    // Oil pots (on main castle)
+    if (upgrades.oilPots.level > 0) {
+      ctx.fillStyle = '#8b4513';
+      ctx.beginPath(); ctx.arc(CASTLE_X - 10, GROUND - 105, 7, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ff6600';
+      ctx.beginPath(); ctx.arc(CASTLE_X - 10, GROUND - 112, 4, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // Draw deployed bomber units (skeleton with bomb head)
+    bomberUnits.forEach(b => {
+      ctx.strokeStyle = '#e8dcc4'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(b.x, b.y - 25); ctx.lineTo(b.x, b.y - 10); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(b.x, b.y - 10); ctx.lineTo(b.x - 6, b.y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(b.x, b.y - 10); ctx.lineTo(b.x + 6, b.y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(b.x - 8, b.y - 20); ctx.lineTo(b.x + 8, b.y - 20); ctx.stroke();
+      ctx.fillStyle = '#333';
+      ctx.beginPath(); ctx.arc(b.x, b.y - 32, 8, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#ff6644'; ctx.lineWidth = 2;
+      const spark = Math.sin(Date.now() * 0.02) * 2;
+      ctx.beginPath(); ctx.moveTo(b.x, b.y - 40); ctx.lineTo(b.x + 3 + spark, b.y - 46); ctx.stroke();
+      ctx.fillStyle = '#ffaa00';
+      ctx.beginPath(); ctx.arc(b.x + 3 + spark, b.y - 46, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ff6644'; ctx.font = '8px Arial'; ctx.textAlign = 'center';
+      ctx.fillText('CLICK!', b.x, b.y - 50);
+      ctx.textAlign = 'left';
+    });
+
+    // Draw knight units - HORSE RIDERS charging left!
+    knightUnits.forEach(k => {
+      // Horse body
+      ctx.fillStyle = '#5a4030';
+      ctx.beginPath();
+      ctx.ellipse(k.x, k.y - 15, 25, 12, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Horse legs (galloping)
+      const gallop = Math.sin(Date.now() * 0.02) * 8;
+      ctx.strokeStyle = '#4a3020'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(k.x - 15, k.y - 8); ctx.lineTo(k.x - 18 - gallop, k.y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(k.x - 5, k.y - 8); ctx.lineTo(k.x - 2 + gallop, k.y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(k.x + 5, k.y - 8); ctx.lineTo(k.x + 8 - gallop, k.y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(k.x + 15, k.y - 8); ctx.lineTo(k.x + 12 + gallop, k.y); ctx.stroke();
+      // Horse head
+      ctx.fillStyle = '#5a4030';
+      ctx.beginPath();
+      ctx.ellipse(k.x - 28, k.y - 20, 10, 7, -0.4, 0, Math.PI * 2);
+      ctx.fill();
+      // Rider skeleton on horse
+      ctx.strokeStyle = '#e8dcc4'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(k.x - 5, k.y - 28); ctx.lineTo(k.x - 5, k.y - 15); ctx.stroke();
+      // Rider skull
+      ctx.fillStyle = '#e8dcc4';
+      ctx.beginPath(); ctx.arc(k.x - 5, k.y - 35, 7, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#222';
+      ctx.beginPath(); ctx.arc(k.x - 7, k.y - 36, 1.5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(k.x - 3, k.y - 36, 1.5, 0, Math.PI * 2); ctx.fill();
+      // Sword extended
+      ctx.strokeStyle = '#aaa'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(k.x - 10, k.y - 28); ctx.lineTo(k.x - 30, k.y - 20); ctx.stroke();
+    });
+    ctx.textAlign = 'left';
+
+    // Defenders - SKULL STICK FIGURES
+    // Enemies
+    enemies.forEach(e => { if (e.state !== 'dead') drawSkullEnemy(e); });
+
+    // Projectiles
+    projectiles.forEach(p => {
+      ctx.fillStyle = p.color;
+      if (p.type === 'boulder') {
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.size/2, 0, Math.PI * 2); ctx.fill();
+      } else if (p.type === 'catapult') {
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.size/2, 0, Math.PI * 2); ctx.fill();
+      } else if (p.type === 'bomb') {
+        ctx.fillStyle = '#333';
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.size/2, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#ff6644'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(p.x, p.y - p.size/2); ctx.lineTo(p.x + 3, p.y - p.size/2 - 5); ctx.stroke();
+      } else if (p.type === 'mage') {
+        ctx.shadowBlur = 10; ctx.shadowColor = p.color;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.size/2, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+      } else {
+        ctx.strokeStyle = p.color; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.vx * 4, p.y - p.vy * 4); ctx.stroke();
+      }
+    });
+
+    // Particles
+    particles.forEach(p => {
+      ctx.globalAlpha = Math.min(1, p.life / 25);
+      if (p.lightning) {
+        ctx.strokeStyle = '#ffff00'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(p.x, p.y);
+        for (let y = p.y; y < p.targetY; y += 20) {
+          ctx.lineTo(p.x + (Math.random() - 0.5) * 30, y);
+        }
+        ctx.stroke();
+      } else if (p.text) {
+        // Thought bubble for funny cuss symbols
+        if (p.bubble) {
+          // Draw cloud bubble
+          ctx.fillStyle = '#fff';
+          const bw = ctx.measureText(p.text).width + 16;
+          ctx.beginPath();
+          ctx.ellipse(p.x, p.y, bw/2 + 5, 14, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#333'; ctx.lineWidth = 2; ctx.stroke();
+          // Little tail circles
+          ctx.beginPath(); ctx.arc(p.x - 10, p.y + 18, 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+          ctx.beginPath(); ctx.arc(p.x - 5, p.y + 26, 3, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        }
+        ctx.fillStyle = p.color;
+        ctx.font = p.big ? 'bold 18px Cinzel' : 'bold 12px Cinzel';
+        ctx.textAlign = 'center'; ctx.fillText(p.text, p.x, p.y + 4); ctx.textAlign = 'left';
+      } else {
+        ctx.fillStyle = p.color;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.size/2, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    });
+
+    // ABILITY BUTTONS AT TOP - clickable when unlocked
+    let abilityBtnX = 120;
+    abilityButtons = []; // Reset button positions
+    Object.entries(abilities).forEach(([name, a]) => {
+      const ready = a.unlocked && a.cooldown <= 0;
+      const onCooldown = a.unlocked && a.cooldown > 0;
+
+      // Button background
+      ctx.fillStyle = ready ? '#3a5a3a' : (onCooldown ? '#3a3a4a' : '#2a2a2a');
+      ctx.fillRect(abilityBtnX, 8, 70, 28);
+      ctx.strokeStyle = ready ? '#6a6' : '#444';
+      ctx.lineWidth = 1; ctx.strokeRect(abilityBtnX, 8, 70, 28);
+
+      // Button text
+      ctx.fillStyle = ready ? '#fff' : '#666';
+      ctx.font = '9px Arial'; ctx.textAlign = 'center';
+      const displayName = name === 'arrowRain' ? 'ARROWS' : name === 'lightning' ? 'STORM' : 'BOULDER';
+      ctx.fillText(displayName, abilityBtnX + 35, 20);
+
+      // Cooldown or cost
+      if (onCooldown) {
+        ctx.fillStyle = '#888';
+        ctx.fillText(Math.ceil(a.cooldown / 60) + 's', abilityBtnX + 35, 32);
+      } else if (!a.unlocked) {
+        ctx.fillStyle = '#666';
+        ctx.fillText('Buy in Shop', abilityBtnX + 35, 32);
+      } else {
+        ctx.fillStyle = '#88ff88';
+        ctx.fillText('READY!', abilityBtnX + 35, 32);
+      }
+
+      if (ready) abilityButtons.push({ x: abilityBtnX, y: 8, w: 70, h: 28, name });
+      abilityBtnX += 78;
+    });
+    ctx.textAlign = 'left';
+
+    // CONDENSED UI - TOP RIGHT (doesn't cover moon on left)
+    ctx.fillStyle = 'rgba(0,0,0,0.75)'; ctx.fillRect(W - 145, 5, 140, 70);
+    ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 1; ctx.strokeRect(W - 145, 5, 140, 70);
+    ctx.fillStyle = '#d4af37'; ctx.font = 'bold 12px Cinzel';
+    ctx.fillText('Gold: ' + gold, W - 138, 22);
+    ctx.fillText('Wave: ' + wave, W - 138, 38);
+    ctx.fillStyle = '#888'; ctx.font = '10px Cinzel';
+    ctx.fillText('Kills: ' + kills, W - 138, 52);
+    ctx.fillText('Army: ' + trainedSupply + '/' + MAX_SUPPLY, W - 138, 66);
+
+    // Skull tally mini display (skulls in a row)
+    if (trainedSupply > 0) {
+      const skulls = Math.min(trainedSupply, 10);
+      for (let i = 0; i < skulls; i++) {
+        ctx.fillStyle = '#e8dcc4';
+        ctx.beginPath(); ctx.arc(W - 70 + i * 7, 62, 3, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+
+    // Shop overlay
+    if (showShop) drawShop();
+
+    // Start message
+    if (wave === 0) {
+      ctx.fillStyle = 'rgba(0,0,0,0.85)'; ctx.fillRect(W/2 - 200, H/2 - 120, 400, 240);
+      ctx.strokeStyle = '#d4af37'; ctx.strokeRect(W/2 - 200, H/2 - 120, 400, 240);
+      ctx.fillStyle = '#d4af37'; ctx.font = 'bold 22px Cinzel'; ctx.textAlign = 'center';
+      ctx.fillText('SKULL CASTLE', W/2, H/2 - 95);
+      ctx.fillStyle = '#e8dcc4'; ctx.font = '10px Cinzel';
+      ctx.fillText('Defend against skeleton hordes in longer waves!', W/2, H/2 - 75);
+      ctx.fillText('Click enemies to stun | Grab & throw small ones HIGH', W/2, H/2 - 58);
+      ctx.fillStyle = '#88ffff';
+      ctx.fillText('Buy TRAINING then throw enemies INTO castle!', W/2, H/2 - 40);
+      ctx.fillText('Click TOWER FLAGS to assign trained skeletons to jobs!', W/2, H/2 - 25);
+      ctx.fillStyle = '#44ff44'; ctx.fillText('GREEN=Archer  ', W/2 - 80, H/2 - 8);
+      ctx.fillStyle = '#ff4444'; ctx.fillText('RED=Bomber  ', W/2 - 10, H/2 - 8);
+      ctx.fillStyle = '#4488ff'; ctx.fillText('BLUE=Storm  ', W/2 + 55, H/2 - 8);
+      ctx.fillStyle = '#888'; ctx.fillText('BLACK=Knight', W/2 + 120, H/2 - 8);
+      ctx.fillStyle = '#ffff00'; ctx.font = '9px Cinzel';
+      ctx.fillText('ABILITIES at top: ARROWS, STORM (stun), BOULDER (wipe all!)', W/2, H/2 + 10);
+      ctx.fillStyle = '#ff8844';
+      ctx.fillText('Wave 8: GIANTS | Wave 10: RAMS | Wave 13: ENEMY BOMBERS!', W/2, H/2 + 28);
+      ctx.fillStyle = '#ff6644';
+      ctx.fillText('Click enemy bombers to DEFUSE before they explode!', W/2, H/2 + 43);
+      ctx.fillStyle = '#e8dcc4'; ctx.font = '10px Cinzel';
+      ctx.fillText('Click SHOP button for upgrades & abilities', W/2, H/2 + 62);
+      ctx.fillStyle = '#88ff88';
+      ctx.fillText('Click START WAVE to begin!', W/2, H/2 + 82);
+      ctx.textAlign = 'left';
+    }
+  }
+
+  // Store button positions for click detection
+  let shopButtons = [];
+  let shopScrollY = 0; // Scroll offset for shop upgrades
+
+  function drawShop() {
+    shopButtons = []; // Reset buttons
+    ctx.fillStyle = 'rgba(0,0,0,0.95)'; ctx.fillRect(50, 30, W - 100, H - 60);
+    ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 2; ctx.strokeRect(50, 30, W - 100, H - 60);
+
+    // X CLOSE BUTTON (top right)
+    ctx.fillStyle = '#aa3333';
+    ctx.fillRect(W - 80, 35, 25, 20);
+    ctx.strokeStyle = '#ff4444'; ctx.lineWidth = 1; ctx.strokeRect(W - 80, 35, 25, 20);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 14px Arial'; ctx.textAlign = 'center';
+    ctx.fillText('X', W - 67, 50);
+
+    ctx.fillStyle = '#d4af37'; ctx.font = 'bold 18px Cinzel';
+    ctx.fillText('SHOP - Gold: ' + gold, W/2, 55);
+    ctx.font = '10px Cinzel'; ctx.fillText('Click X or outside to close | Scroll: arrows or wheel', W/2, 72);
+
+    // SCROLL BUTTONS for upgrades (left column)
+    const scrollBtnW = 30, scrollBtnH = 22;
+    const scrollUpY = 85, scrollDownY = H - 90;
+    const upgradeCount = Object.keys(upgrades).length;
+    const maxScroll = Math.max(0, (upgradeCount * 34) - 220); // How far we can scroll
+
+    // UP arrow
+    ctx.fillStyle = shopScrollY > 0 ? '#4a5a4a' : '#333';
+    ctx.fillRect(55, scrollUpY, scrollBtnW, scrollBtnH);
+    ctx.strokeStyle = shopScrollY > 0 ? '#6a6' : '#444'; ctx.lineWidth = 1;
+    ctx.strokeRect(55, scrollUpY, scrollBtnW, scrollBtnH);
+    ctx.fillStyle = shopScrollY > 0 ? '#fff' : '#666'; ctx.font = 'bold 14px Arial';
+    ctx.fillText('\u25B2', 70, scrollUpY + 16);
+    if (shopScrollY > 0) shopButtons.push({ x: 55, y: scrollUpY, w: scrollBtnW, h: scrollBtnH, action: 'scrollUp' });
+
+    // DOWN arrow
+    ctx.fillStyle = shopScrollY < maxScroll ? '#4a5a4a' : '#333';
+    ctx.fillRect(55, scrollDownY, scrollBtnW, scrollBtnH);
+    ctx.strokeStyle = shopScrollY < maxScroll ? '#6a6' : '#444';
+    ctx.strokeRect(55, scrollDownY, scrollBtnW, scrollBtnH);
+    ctx.fillStyle = shopScrollY < maxScroll ? '#fff' : '#666';
+    ctx.fillText('\u25BC', 70, scrollDownY + 16);
+    if (shopScrollY < maxScroll) shopButtons.push({ x: 55, y: scrollDownY, w: scrollBtnW, h: scrollBtnH, action: 'scrollDown' });
+
+    // UPGRADES section (left) - with scroll clipping
+    ctx.fillStyle = '#aaa'; ctx.font = 'bold 14px Cinzel';
+    ctx.fillText('UPGRADES', 170, 95);
+
+    // Visible area for upgrades
+    const visibleTop = 105, visibleBottom = H - 95;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(70, visibleTop, 200, visibleBottom - visibleTop);
+    ctx.clip();
+
+    let y = 105 - shopScrollY;
+    Object.entries(upgrades).forEach(([name, u]) => {
+      // Only draw if in visible area
+      if (y + 28 > visibleTop && y < visibleBottom) {
+        const maxed = u.level >= u.maxLevel;
+        const canBuy = !maxed && gold >= u.cost[u.level];
+        const cost = maxed ? 'MAX' : u.cost[u.level] + 'g';
+        const levelText = u.maxLevel > 1 ? ' [' + u.level + '/' + u.maxLevel + ']' : '';
+
+        // Draw button
+        ctx.fillStyle = maxed ? '#2a4a2a' : (canBuy ? '#3a5a3a' : '#3a3a4a');
+        ctx.fillRect(90, y, 175, 28);
+        ctx.strokeStyle = maxed ? '#4a4' : (canBuy ? '#6a6' : '#555');
+        ctx.lineWidth = 1; ctx.strokeRect(90, y, 175, 28);
+
+        ctx.fillStyle = maxed ? '#6a6' : (canBuy ? '#ddd' : '#666');
+        ctx.font = '10px Cinzel'; ctx.textAlign = 'left';
+        ctx.fillText(name.toUpperCase() + levelText + ' ' + cost, 95, y + 18);
+
+        if (!maxed && y > visibleTop && y + 28 < visibleBottom) {
+          shopButtons.push({ x: 90, y, w: 175, h: 28, action: 'upgrade', name });
+        }
+      }
+      y += 34;
+    });
+    ctx.restore();
+
+    // ABILITIES section (right) - no scroll needed (only 3)
+    ctx.fillStyle = '#aaa'; ctx.font = 'bold 14px Cinzel'; ctx.textAlign = 'center';
+    ctx.fillText('ABILITIES', W - 170, 95);
+    y = 110;
+    Object.entries(abilities).forEach(([name, a]) => {
+      const canBuy = !a.unlocked && gold >= a.unlockCost;
+      const status = a.unlocked ? 'OWNED (use: ' + a.useCost + 'g)' : a.unlockCost + 'g';
+
+      // Draw button (larger for easy clicking)
+      ctx.fillStyle = a.unlocked ? '#2a4a2a' : (canBuy ? '#4a4a2a' : '#3a3a4a');
+      ctx.fillRect(W - 270, y, 200, 35);
+      ctx.strokeStyle = a.unlocked ? '#4a4' : (canBuy ? '#aa6' : '#555');
+      ctx.lineWidth = 1; ctx.strokeRect(W - 270, y, 200, 35);
+
+      ctx.fillStyle = a.unlocked ? '#6a6' : (canBuy ? '#ddd' : '#666');
+      ctx.font = '12px Cinzel'; ctx.textAlign = 'left';
+      ctx.fillText(name.toUpperCase(), W - 262, y + 15);
+      ctx.font = '10px Cinzel';
+      ctx.fillText(status, W - 262, y + 28);
+
+      if (!a.unlocked) shopButtons.push({ x: W - 270, y, w: 200, h: 35, action: 'ability', name });
+      y += 42;
+    });
+
+    // Info
+    ctx.fillStyle = '#888'; ctx.font = '10px Cinzel'; ctx.textAlign = 'center';
+    ctx.fillText('TRAINING: Throw enemies INTO castle (left side) to capture', W/2, H - 115);
+    ctx.fillText('Click TOWER FLAGS to assign trained skeletons:', W/2, H - 100);
+    ctx.fillStyle = '#44ff44'; ctx.fillText('GREEN=Archer', W/2 - 120, H - 85);
+    ctx.fillStyle = '#ff4444'; ctx.fillText('RED=Bomber', W/2 - 30, H - 85);
+    ctx.fillStyle = '#4488ff'; ctx.fillText('BLUE=Storm', W/2 + 50, H - 85);
+    ctx.fillStyle = '#888'; ctx.fillText('BLACK=Knight', W/2 + 130, H - 85);
+    ctx.fillStyle = '#9944ff'; ctx.fillText('PURPLE=Catapult', W/2, H - 70);
+    ctx.fillStyle = '#ffff00'; ctx.font = '9px Cinzel';
+    ctx.fillText('ABILITIES (top buttons): ARROWS=rain damage | STORM=stun+damage | BOULDER=wipe screen!', W/2, H - 52);
+    ctx.fillStyle = '#ff8844';
+    ctx.fillText('Wave 8: Giants | Wave 10: Battering Rams | Wave 13: Enemy Bombers (click to defuse!)', W/2, H - 38);
+    ctx.textAlign = 'left';
+  }
+
+  function handleShopClick(mx, my) {
+    const upgradeCount = Object.keys(upgrades).length;
+    const maxScroll = Math.max(0, (upgradeCount * 34) - 220);
+
+    for (const btn of shopButtons) {
+      if (mx > btn.x && mx < btn.x + btn.w && my > btn.y && my < btn.y + btn.h) {
+        if (btn.action === 'upgrade') buyUpgrade(btn.name);
+        else if (btn.action === 'ability') buyAbility(btn.name);
+        else if (btn.action === 'scrollUp') { shopScrollY = Math.max(0, shopScrollY - 68); }
+        else if (btn.action === 'scrollDown') { shopScrollY = Math.min(maxScroll, shopScrollY + 68); }
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // Mouse wheel scrolling in shop
+  C.addEventListener('wheel', ev => {
+    if (!showShop) return;
+    ev.preventDefault();
+    const upgradeCount = Object.keys(upgrades).length;
+    const maxScroll = Math.max(0, (upgradeCount * 34) - 220);
+    shopScrollY = Math.max(0, Math.min(maxScroll, shopScrollY + ev.deltaY * 0.5));
+  }, { passive: false });
+
+  function gameOver() {
+    state = 'over'; cancelAnimationFrame(raf);
+    document.getElementById('castle-over').classList.add('show');
+    document.getElementById('castle-final').textContent = 'Wave ' + wave + ' - ' + kills + ' kills - ' + gold + ' gold';
+    document.getElementById('castle-funny').textContent = getDeathJoke();
+    addToLeaderboard('castle', wave * 100 + kills);
+  }
+
+  function loop() { if (state !== 'running') return; update(); draw(); raf = requestAnimationFrame(loop); }
+
+  function start() {
+    if (state === 'idle' || state === 'over') { reset(); state = 'running'; spawnWave(); loop(); }
+    else if (state === 'running' && wave > 0 && enemies.filter(e => e.state !== 'dead').length === 0 && waveEnemiesLeft.length === 0) spawnWave();
+  }
+
+  function assignArcher() {
+    if (trainedSupply <= 0 || upgrades.archerTower.level === 0) return;
+    trainedSupply--;
+    // Add archer with random timer offset so they fire at different times
+    archerTimers.push({ timer: Math.floor(Math.random() * ARCHER_FIRE_RATE), offset: Math.floor(Math.random() * 60) - 30 });
+    particles.push({ x: W/2, y: H/2, vx: 0, vy: -1, life: 60, text: 'Archer assigned! (' + archerTimers.length + ' total)', color: '#7799ff', big: true });
+    updateHUD();
+  }
+
+  function buyUpgrade(name) {
+    const u = upgrades[name];
+    if (u.level >= u.maxLevel || gold < u.cost[u.level]) return;
+    gold -= u.cost[u.level]; u.level++;
+    if (name === 'walls') { maxHP += u.bonus; castleHP += u.bonus; }
+    updateHUD();
+    const msg = u.desc ? u.desc.replace('!', ' unlocked!') : name + ' upgraded!';
+    particles.push({ x: W/2, y: H/2, vx: 0, vy: -1, life: 60, text: msg, color: '#88ff88', big: true });
+  }
+
+  function buyAbility(name) {
+    const a = abilities[name];
+    if (a.unlocked || gold < a.unlockCost) return;
+    gold -= a.unlockCost; a.unlocked = true;
+    updateHUD();
+    particles.push({ x: W/2, y: H/2, vx: 0, vy: -1, life: 60, text: name + ' unlocked! (costs ' + a.useCost + 'g to use)', color: '#ffff00', big: true });
+  }
+
+  // Event handlers
+  C.addEventListener('mousedown', ev => {
+    const rect = C.getBoundingClientRect();
+    mouseX = (ev.clientX - rect.left) * (W / rect.width);
+    mouseY = (ev.clientY - rect.top) * (H / rect.height);
+
+    if (showShop) {
+      // Check X button (top right of shop)
+      if (mouseX > W - 80 && mouseX < W - 55 && mouseY > 35 && mouseY < 55) {
+        showShop = false;
+        return;
+      }
+      // Check if clicking a shop button
+      if (!handleShopClick(mouseX, mouseY)) {
+        // Clicked outside buttons - close shop
+        showShop = false;
+      }
+      return;
+    }
+    if (state !== 'running') { start(); return; }
+    if (enemies.filter(e => e.state !== 'dead').length === 0 && waveEnemiesLeft.length === 0) { spawnWave(); return; }
+
+    // Check ABILITY BUTTONS at top
+    for (const btn of abilityButtons) {
+      if (mouseX > btn.x && mouseX < btn.x + btn.w && mouseY > btn.y && mouseY < btn.y + btn.h) {
+        useAbility(btn.name);
+        return;
+      }
+    }
+
+    // TOWER FLAG CLICKS - each tower is 32px apart starting at castleLeft + 60
+    const castleLeft = CASTLE_X - 120;
+    const towerWidth = 28, towerSpacing = 32;
+    let towerX = castleLeft + 60;
+    const flagClickY = GROUND - 185;
+
+    // Archer tower flag (GREEN) - FAR LEFT position
+    const archerTowerClickX = castleLeft + 5;
+    if (upgrades.archerTower.level > 0 && trainedSupply > 0) {
+      if (mouseX > archerTowerClickX && mouseX < archerTowerClickX + towerWidth && mouseY > flagClickY - 20 && mouseY < flagClickY + 20) {
+        trainedSupply--;
+        // Add archer with random timer offset so they fire at different times
+        archerTimers.push({ timer: Math.floor(Math.random() * ARCHER_FIRE_RATE), offset: Math.floor(Math.random() * 60) - 30 });
+        particles.push({ x: W/2, y: H/2, vx: 0, vy: -1, life: 60, text: 'Archer assigned! (' + archerTimers.length + ')', color: '#44ff44', big: true });
+        return;
+      }
+      // Don't advance towerX - archer is separate
+    }
+
+    // Bomber tower flag (RED)
+    if (upgrades.bomberBros.level > 0 && trainedSupply > 0) {
+      if (mouseX > towerX && mouseX < towerX + towerWidth && mouseY > flagClickY - 20 && mouseY < flagClickY + 20) {
+        trainedSupply--;
+        bomberUnits.push({ x: CASTLE_X - 100, y: GROUND });
+        particles.push({ x: W/2, y: H/2, vx: 0, vy: 0, life: 40, text: 'BOMBER DEPLOYED!', color: '#ff6644', big: true });
+        return;
+      }
+      towerX += towerSpacing;
+    }
+
+    // Storm tower flag (BLUE)
+    if (upgrades.stormCaller.level > 0 && trainedSupply > 0) {
+      if (mouseX > towerX && mouseX < towerX + towerWidth && mouseY > flagClickY - 20 && mouseY < flagClickY + 20) {
+        trainedSupply--; stormCount++;
+        particles.push({ x: W/2, y: H/2, vx: 0, vy: 0, life: 40, text: 'Storm Caller assigned! (' + stormCount + ')', color: '#4488ff', big: true });
+        return;
+      }
+      towerX += towerSpacing;
+    }
+
+    // Knight tower flag (BLACK)
+    if (upgrades.knights.level > 0 && trainedSupply > 0) {
+      if (mouseX > towerX && mouseX < towerX + towerWidth && mouseY > flagClickY - 20 && mouseY < flagClickY + 20) {
+        trainedSupply--;
+        knightUnits.push({ x: CASTLE_X - 80, y: GROUND, hp: 5, attackTimer: 0, returning: false });
+        particles.push({ x: W/2, y: H/2, vx: 0, vy: 0, life: 40, text: 'KNIGHT CHARGES!', color: '#ffdd44', big: true });
+        return;
+      }
+      towerX += towerSpacing;
+    }
+
+    // Catapult tower flag (PURPLE)
+    if (upgrades.catapult.level > 0 && trainedSupply > 0) {
+      if (mouseX > towerX && mouseX < towerX + towerWidth && mouseY > flagClickY - 20 && mouseY < flagClickY + 20) {
+        trainedSupply--; catapultCount++;
+        particles.push({ x: W/2, y: H/2, vx: 0, vy: 0, life: 40, text: 'Catapult manned! (' + catapultCount + ')', color: '#9944ff', big: true });
+        return;
+      }
+    }
+
+    // Check if clicking a bomber unit to explode it
+    for (let i = bomberUnits.length - 1; i >= 0; i--) {
+      const b = bomberUnits[i];
+      if (mouseX > b.x - 25 && mouseX < b.x + 25 && mouseY > b.y - 55 && mouseY < b.y) {
+        const explodeX = b.x, explodeY = b.y - 20;
+        // Bomber damage: base 8 + 4 per upgrade level
+        const bomberDamage = 8 + upgrades.bomberPower.level * 4;
+        const blastRadius = 80 + upgrades.bomberPower.level * 15;
+        enemies.forEach(e => {
+          if (e.state !== 'dead' && Math.hypot(e.x + e.size/2 - explodeX, e.y - e.size/2 - explodeY) < blastRadius) {
+            e.hp -= bomberDamage;
+            if (e.hp <= 0) killEnemy(e, false);
+          }
+        });
+        for (let k = 0; k < 25; k++) {
+          particles.push({ x: explodeX, y: explodeY, vx: (Math.random()-0.5)*14, vy: -Math.random()*10, life: 40, color: k % 2 ? '#ff6644' : '#ffaa00', size: 9 });
+        }
+        bomberUnits.splice(i, 1);
+        return;
+      }
+    }
+
+    // ENEMY interactions
+    for (const e of enemies) {
+      if ((e.state === 'walk' || e.state === 'attack' || e.state === 'stunned') &&
+          mouseX > e.x && mouseX < e.x + e.size && mouseY > e.y - e.size && mouseY < e.y) {
+        // Enemy bombers - click to defuse!
+        if (e.isBomber) {
+          killEnemy(e, false);
+          particles.push({ x: e.x, y: e.y - 30, vx: 0, vy: 0, life: 40, text: 'DEFUSED!', color: '#88ff88' });
+          return;
+        }
+        if (e.canPickUp) { e.state = 'held'; heldEnemy = e; }
+        else if ((e.isGiant || e.isRam || e.isBoss) && e.state !== 'stunned') {
+          // Click to make big guys fall down!
+          e.state = 'stunned';
+          e.stunTimer = 150;
+          // Funny PG cuss symbols in thought bubble
+          const curses = ['#$%@!!', '@#*&!!', '%$#@!?', '!@#$%!', '*#@%!!', '$@#%&!'];
+          const curse = curses[Math.floor(Math.random() * curses.length)];
+          particles.push({ x: e.x + e.size/2, y: e.y - e.size - 10, vx: 0, vy: -0.5, life: 60, text: curse, color: '#ff4444', big: true, bubble: true });
+          particles.push({ x: e.x + e.size/2, y: e.y - e.size/2, vx: 0, vy: 0, life: 20, text: 'THUD!', color: '#ffaa00' });
+        }
+        else { e.state = 'fall'; e.vy = -3; e.vx = (Math.random() - 0.5) * 2; }
+        return;
+      }
+    }
+  });
+
+  C.addEventListener('mousemove', ev => {
+    const rect = C.getBoundingClientRect();
+    mouseX = (ev.clientX - rect.left) * (W / rect.width);
+    mouseY = (ev.clientY - rect.top) * (H / rect.height);
+    // Track hovered enemy for highlight effect
+    hoveredEnemy = null;
+    for (const e of enemies) {
+      if ((e.state === 'walk' || e.state === 'attack' || e.state === 'stunned') &&
+          mouseX > e.x && mouseX < e.x + e.size && mouseY > e.y - e.size && mouseY < e.y) {
+        hoveredEnemy = e;
+        break;
+      }
+    }
+  });
+
+  function releaseHeld() {
+    if (heldEnemy) {
+      heldEnemy.state = 'fall';
+      // Check if dropping near castle (training zone) - just drop, no bounce
+      const castleLeft = CASTLE_X - 120;
+      const nearCastle = heldEnemy.x > castleLeft - 60;
+      if (nearCastle) {
+        // Simple drop into castle - no bounce
+        heldEnemy.vx = 0;
+        heldEnemy.vy = 2; // Just fall down gently
+      } else {
+        // Throwing away from castle - normal throw physics
+        heldEnemy.vx = (mouseX - heldEnemy.x - heldEnemy.size/2) * 0.2;
+        heldEnemy.vy = -8 - Math.abs(mouseY - GROUND) * 0.05;
+      }
+      heldEnemy = null;
+    }
+  }
+
+  C.addEventListener('mouseup', releaseHeld);
+  document.addEventListener('mouseup', releaseHeld);
+  C.addEventListener('mouseleave', releaseHeld);
+
+  // Touch support
+  C.addEventListener('touchstart', ev => { ev.preventDefault(); const t = ev.touches[0]; C.dispatchEvent(new MouseEvent('mousedown', { clientX: t.clientX, clientY: t.clientY })); });
+  C.addEventListener('touchmove', ev => { ev.preventDefault(); const t = ev.touches[0]; const rect = C.getBoundingClientRect(); mouseX = (t.clientX - rect.left) * (W / rect.width); mouseY = (t.clientY - rect.top) * (H / rect.height); });
+  C.addEventListener('touchend', ev => { ev.preventDefault(); C.dispatchEvent(new MouseEvent('mouseup')); });
+
+  // Keyboard
+  document.addEventListener('keydown', ev => {
+    if (state !== 'running' && ev.key !== 's' && ev.key !== 'S') return;
+    const key = ev.key.toLowerCase();
+    if (key === 's') { showShop = !showShop; if (showShop) shopScrollY = 0; return; }
+
+    // Assign trained skeletons to archer tower
+    if (key === 'a' && !showShop && trainedSupply > 0 && upgrades.archerTower.level > 0) {
+      assignArcher(); return;
+    }
+
+    if (showShop) {
+      const upgradeCount = Object.keys(upgrades).length;
+      const maxScroll = Math.max(0, (upgradeCount * 34) - 220);
+      // Arrow key scrolling
+      if (key === 'arrowup') { shopScrollY = Math.max(0, shopScrollY - 68); return; }
+      else if (key === 'arrowdown') { shopScrollY = Math.min(maxScroll, shopScrollY + 68); return; }
+      // Upgrades
+      else if (key === 'w') buyUpgrade('walls');
+      else if (key === 'm') buyUpgrade('moat');
+      else if (key === 'o') buyUpgrade('oilPots');
+      else if (key === 't') buyUpgrade('training');
+      else if (key === 'r') buyUpgrade('archerTower');
+      // Abilities (also unlock with number keys in shop)
+      else if (key === '1') buyAbility('arrowRain');
+      else if (key === '2') buyAbility('lightning');
+      else if (key === '3') buyAbility('boulder');
+    } else {
+      // Use abilities (only if unlocked)
+      if (key === '1') useAbility('arrowRain');
+      else if (key === '2') useAbility('lightning');
+      else if (key === '3') useAbility('boulder');
+    }
+  });
+
+  window.castleStart = start;
+  window.castleShop = function() { showShop = !showShop; if (showShop) shopScrollY = 0; };
+  window.castlePause = function() { if (state === 'running') cancelAnimationFrame(raf); };
+
+  // Initial draw
+  ctx.fillStyle = '#1a0a1a'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#d4af37'; ctx.font = 'bold 24px Cinzel'; ctx.textAlign = 'center';
+  ctx.fillText('SKULL CASTLE', W/2, H/2 - 30);
+  ctx.fillStyle = '#e8dcc4'; ctx.font = '12px Cinzel';
+  ctx.fillText('Epic castle defense with upgrades & abilities!', W/2, H/2);
+  ctx.fillText('Click to Start', W/2, H/2 + 30);
+  ctx.textAlign = 'left';
 })();
 </script>
 </body>
