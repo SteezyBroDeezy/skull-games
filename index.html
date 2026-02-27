@@ -41,13 +41,24 @@
   .game-over-msg p { color: var(--bone); margin: 0.2rem 0; font-size: 0.9rem; }
   .game-over-msg .funny { color: var(--red); font-style: italic; margin-top: 0.4rem; font-size: 0.85rem; }
   .canvas-wrap { position: relative; }
-  .mobile-controls { display: none; gap: 1rem; margin-top: 0.8rem; justify-content: center; align-items: center; }
+  .mobile-controls { display: none; gap: 3rem; margin-top: 0.8rem; justify-content: center; align-items: center; }
   @media (max-width: 800px) { .mobile-controls { display: flex; } }
   .mobile-dpad { display: flex; flex-direction: column; align-items: center; gap: 3px; }
   .mobile-dpad-row { display: flex; gap: 3px; }
   .mobile-btn { width: 45px; height: 45px; background: var(--card); border: 2px solid var(--gold); border-radius: 8px; color: var(--gold); font-size: 1.3rem; cursor: pointer; display: flex; align-items: center; justify-content: center; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
   .mobile-btn:active { background: rgba(212,175,55,0.3); }
   .mobile-fire { width: 70px; height: 70px; border-radius: 50%; font-size: 1.8rem; background: linear-gradient(135deg, #660000, #aa0000); border-color: var(--red); }
+  .mobile-action { width: 80px; height: 60px; font-size: 1rem; font-weight: bold; }
+  .mobile-boost { width: 80px; height: 80px; border-radius: 50%; font-size: 1rem; font-weight: bold; background: linear-gradient(135deg, #226622, #44aa44); border-color: #44ff44; }
+  .mobile-joystick { width: 120px; height: 120px; background: rgba(30,20,40,0.9); border: 3px solid var(--gold); border-radius: 50%; position: relative; touch-action: none; }
+  .joystick-knob { width: 50px; height: 50px; background: linear-gradient(135deg, #555, #888); border: 2px solid var(--gold); border-radius: 50%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; }
+  .btn-fullscreen { background: #2a3a2a !important; font-size: 0.7rem !important; padding: 0.4rem 0.6rem !important; }
+  @media (min-width: 801px) { .btn-fullscreen { display: none; } }
+  .game-panel.fullscreen { position: fixed !important; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; background: #0a0510; display: flex; flex-direction: column; }
+  .game-panel.fullscreen .game-wrap { flex: 1; display: flex; flex-direction: column; width: 100%; }
+  .game-panel.fullscreen .canvas-wrap { flex: 1; display: flex; align-items: center; justify-content: center; }
+  .game-panel.fullscreen canvas { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
+  .game-panel.fullscreen .leaderboard, .game-panel.fullscreen .instructions { display: none; }
   .leaderboard { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem 1rem; margin-top: 0.5rem; min-width: 200px; }
   .leaderboard h4 { color: var(--gold); text-align: center; font-size: 0.85rem; margin-bottom: 0.4rem; border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; }
   .leaderboard ol { list-style: none; padding: 0; margin: 0; }
@@ -86,7 +97,11 @@
       <canvas id="runner-canvas" width="750" height="280"></canvas>
       <div class="game-over-msg" id="runner-over"><h2>You Died!</h2><p id="runner-final"></p><p class="funny" id="runner-funny"></p></div>
     </div>
-    <div class="game-controls"><button class="btn-game" onclick="runnerStart()">Start</button></div>
+    <div class="game-controls"><button class="btn-game" onclick="runnerStart()">Start</button><button class="btn-game btn-fullscreen" onclick="toggleFullscreen('runner')">Fullscreen</button></div>
+    <div class="mobile-controls" id="runner-mobile">
+      <div class="mobile-btn mobile-action" id="runner-duck">DUCK</div>
+      <div class="mobile-btn mobile-action" id="runner-jump">JUMP</div>
+    </div>
     <div class="instructions"><strong>SPACE/UP</strong> jump | <strong>DOWN</strong> duck | Watch for falling reapers!</div>
     <div class="leaderboard"><h4>TOP 5</h4><ol id="lb-runner"></ol></div>
   </div>
@@ -103,7 +118,10 @@
       <canvas id="snake-canvas" width="480" height="480"></canvas>
       <div class="game-over-msg" id="snake-over"><h2>You Died!</h2><p id="snake-final"></p><p class="funny" id="snake-funny"></p></div>
     </div>
-    <div class="game-controls"><button class="btn-game" onclick="snakeStart()">Start</button></div>
+    <div class="game-controls"><button class="btn-game" onclick="snakeStart()">Start</button><button class="btn-game btn-fullscreen" onclick="toggleFullscreen('snake')">Fullscreen</button></div>
+    <div class="mobile-controls" id="snake-mobile">
+      <div class="mobile-dpad"><div class="mobile-dpad-row"><div class="mobile-btn" id="snake-up">^</div></div><div class="mobile-dpad-row"><div class="mobile-btn" id="snake-left"><</div><div class="mobile-btn" id="snake-down">v</div><div class="mobile-btn" id="snake-right">></div></div></div>
+    </div>
     <div class="instructions"><strong>Arrow Keys/WASD</strong> steer | Eat bones!</div>
     <div class="leaderboard"><h4>TOP 5</h4><ol id="lb-snake"></ol></div>
   </div>
@@ -130,7 +148,11 @@
       <canvas id="slither-canvas" width="850" height="550"></canvas>
       <div class="game-over-msg" id="slither-over"><h2>Devoured!</h2><p id="slither-final"></p><p class="funny" id="slither-funny"></p></div>
     </div>
-    <div class="game-controls"><button class="btn-game" onclick="slitherStart()">Start</button></div>
+    <div class="game-controls"><button class="btn-game" onclick="slitherStart()">Start</button><button class="btn-game btn-fullscreen" onclick="toggleFullscreen('slither')">Fullscreen</button></div>
+    <div class="mobile-controls" id="slither-mobile">
+      <div class="mobile-joystick" id="slither-joystick"><div class="joystick-knob" id="slither-knob"></div></div>
+      <div class="mobile-btn mobile-boost" id="slither-boost">BOOST</div>
+    </div>
     <div class="instructions"><strong>Mouse</strong> steer | <strong>Click</strong> boost | 25 skull snakes!</div>
     <div class="leaderboard">
       <h4>EASY</h4><ol id="lb-slither-easy"></ol>
@@ -157,7 +179,7 @@
       <div class="mobile-dpad"><div class="mobile-dpad-row"><div class="mobile-btn" id="mob-up">^</div></div><div class="mobile-dpad-row"><div class="mobile-btn" id="mob-left"><</div><div class="mobile-btn" id="mob-down">v</div><div class="mobile-btn" id="mob-right">></div></div></div>
       <div class="mobile-btn mobile-fire" id="mob-fire">FIRE</div>
     </div>
-    <div class="game-controls"><button class="btn-game" onclick="shooterStart()">Start</button></div>
+    <div class="game-controls"><button class="btn-game" onclick="shooterStart()">Start</button><button class="btn-game btn-fullscreen" onclick="toggleFullscreen('shooter')">Fullscreen</button></div>
     <div class="instructions"><strong>Arrows</strong> move | <strong>SPACE</strong> shoot | All ships are skulls!</div>
     <div class="leaderboard"><h4>TOP 5</h4><ol id="lb-shooter"></ol></div>
   </div>
@@ -179,7 +201,7 @@
       <div class="mobile-dpad"><div class="mobile-dpad-row"><div class="mobile-btn" id="centi-up">^</div></div><div class="mobile-dpad-row"><div class="mobile-btn" id="centi-left"><</div><div class="mobile-btn" id="centi-down">v</div><div class="mobile-btn" id="centi-right">></div></div></div>
       <div class="mobile-btn mobile-fire" id="centi-fire">FIRE</div>
     </div>
-    <div class="game-controls"><button class="btn-game" onclick="centiStart()">Start</button></div>
+    <div class="game-controls"><button class="btn-game" onclick="centiStart()">Start</button><button class="btn-game btn-fullscreen" onclick="toggleFullscreen('centipede')">Fullscreen</button></div>
     <div class="instructions"><strong>Arrows</strong> move | <strong>SPACE</strong> shoot | Skull centipede reverses at bottom!</div>
     <div class="leaderboard"><h4>TOP 5</h4><ol id="lb-centi"></ol></div>
   </div>
@@ -201,6 +223,8 @@
     <div class="game-controls">
       <button class="btn-game" onclick="castleStart()">Start Wave</button>
       <button class="btn-game" onclick="castleShop()" style="background:#3a2a4a;">Shop</button>
+      <button class="btn-game" onclick="castleSpeed()" style="background:#4a4a2a;">Speed</button>
+      <button class="btn-game btn-fullscreen" onclick="toggleFullscreen('castle')">Fullscreen</button>
     </div>
     <div class="instructions"><strong>Click</strong> to stun | <strong>Drag + Throw</strong> into castle to capture | Train your skeleton army!</div>
     <div class="leaderboard"><h4>TOP 5</h4><ol id="lb-castle"></ol></div>
@@ -220,6 +244,19 @@ function showGame(id) {
   try { shooterPause(); } catch(e) {}
   try { centiPause(); } catch(e) {}
   try { castlePause(); } catch(e) {}
+}
+function toggleFullscreen(game) {
+  const panel = document.getElementById('panel-' + game);
+  if (panel.classList.contains('fullscreen')) {
+    panel.classList.remove('fullscreen');
+    if (document.exitFullscreen) document.exitFullscreen();
+    screen.orientation?.unlock?.();
+  } else {
+    panel.classList.add('fullscreen');
+    if (panel.requestFullscreen) panel.requestFullscreen();
+    // Lock to landscape on mobile
+    screen.orientation?.lock?.('landscape').catch(() => {});
+  }
 }
 function lsGet(k, def) { try { return JSON.parse(localStorage.getItem(k)) ?? def; } catch { return def; } }
 function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
@@ -898,6 +935,18 @@ function drawSkull(ctx, x, y, size, color) {
   });
   document.addEventListener('keyup', e => { if (e.code === 'ArrowDown') duck(false); });
   C.addEventListener('touchstart', e => { e.preventDefault(); if (state === 'idle' || state === 'dead') runnerStart(); else jump(); });
+
+  // Mobile controls for Runner
+  const runnerJump = document.getElementById('runner-jump');
+  const runnerDuck = document.getElementById('runner-duck');
+  if (runnerJump) {
+    runnerJump.addEventListener('touchstart', e => { e.preventDefault(); if (state === 'idle' || state === 'dead') runnerStart(); else jump(); });
+  }
+  if (runnerDuck) {
+    runnerDuck.addEventListener('touchstart', e => { e.preventDefault(); duck(true); });
+    runnerDuck.addEventListener('touchend', e => { e.preventDefault(); duck(false); });
+  }
+
   ctx.fillStyle = '#0a0515'; ctx.fillRect(0,0,W,H); ctx.fillStyle = '#d4af37'; ctx.font = 'bold 22px Cinzel'; ctx.textAlign = 'center'; ctx.fillText('SKULL RUNNER', W/2, H/2); ctx.textAlign = 'left';
 })();
 
@@ -963,6 +1012,18 @@ function drawSkull(ctx, x, y, size, color) {
     if (d && !(d[0] === -dir.x && d[1] === -dir.y)) { e.preventDefault(); nextDir = { x: d[0], y: d[1] }; }
     if (e.code === 'Space' && state !== 'running') { e.preventDefault(); snakeStart(); }
   });
+
+  // Mobile controls for Snake
+  function snakeSetDir(dx, dy) { if (!(dx === -dir.x && dy === -dir.y)) nextDir = { x: dx, y: dy }; }
+  const snakeUp = document.getElementById('snake-up');
+  const snakeDown = document.getElementById('snake-down');
+  const snakeLeft = document.getElementById('snake-left');
+  const snakeRight = document.getElementById('snake-right');
+  if (snakeUp) snakeUp.addEventListener('touchstart', e => { e.preventDefault(); snakeSetDir(0, -1); });
+  if (snakeDown) snakeDown.addEventListener('touchstart', e => { e.preventDefault(); snakeSetDir(0, 1); });
+  if (snakeLeft) snakeLeft.addEventListener('touchstart', e => { e.preventDefault(); snakeSetDir(-1, 0); });
+  if (snakeRight) snakeRight.addEventListener('touchstart', e => { e.preventDefault(); snakeSetDir(1, 0); });
+
   ctx.fillStyle = '#0a0806'; ctx.fillRect(0,0,C.width,C.height); ctx.fillStyle = '#d4af37'; ctx.font = 'bold 22px Cinzel'; ctx.textAlign = 'center'; ctx.fillText('SKULL SNAKE', C.width/2, C.height/2); ctx.textAlign = 'left';
 })();
 
@@ -1353,6 +1414,41 @@ function drawSkull(ctx, x, y, size, color) {
   C.addEventListener('touchmove', e => { e.preventDefault(); const rect = C.getBoundingClientRect(); mouseX = (e.touches[0].clientX - rect.left) * (VW / rect.width); mouseY = (e.touches[0].clientY - rect.top) * (VH / rect.height); }, { passive: false });
   C.addEventListener('mousedown', () => boosting = true); C.addEventListener('mouseup', () => boosting = false);
   C.addEventListener('touchstart', e => { e.preventDefault(); boosting = true; }); C.addEventListener('touchend', () => boosting = false);
+
+  // Mobile joystick and boost for Slither
+  const slitherJoystick = document.getElementById('slither-joystick');
+  const slitherKnob = document.getElementById('slither-knob');
+  const slitherBoost = document.getElementById('slither-boost');
+  let joystickActive = false, joystickAngle = 0;
+  if (slitherJoystick && slitherKnob) {
+    function handleJoystick(e) {
+      e.preventDefault();
+      const rect = slitherJoystick.getBoundingClientRect();
+      const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
+      const touch = e.touches ? e.touches[0] : e;
+      const dx = touch.clientX - cx, dy = touch.clientY - cy;
+      const dist = Math.min(Math.hypot(dx, dy), 45);
+      const angle = Math.atan2(dy, dx);
+      slitherKnob.style.left = (50 + (Math.cos(angle) * dist / 60 * 50)) + '%';
+      slitherKnob.style.top = (50 + (Math.sin(angle) * dist / 60 * 50)) + '%';
+      // Set mouse target position based on joystick
+      if (player && dist > 10) {
+        mouseX = VW/2 + Math.cos(angle) * 200;
+        mouseY = VH/2 + Math.sin(angle) * 200;
+      }
+    }
+    slitherJoystick.addEventListener('touchstart', e => { joystickActive = true; handleJoystick(e); });
+    slitherJoystick.addEventListener('touchmove', handleJoystick);
+    slitherJoystick.addEventListener('touchend', () => {
+      joystickActive = false;
+      slitherKnob.style.left = '50%'; slitherKnob.style.top = '50%';
+    });
+  }
+  if (slitherBoost) {
+    slitherBoost.addEventListener('touchstart', e => { e.preventDefault(); boosting = true; });
+    slitherBoost.addEventListener('touchend', e => { e.preventDefault(); boosting = false; });
+  }
+
   ctx.fillStyle = '#060504'; ctx.fillRect(0,0,VW,VH); ctx.fillStyle = '#d4af37'; ctx.font = 'bold 26px Cinzel'; ctx.textAlign = 'center'; ctx.fillText('SKULL SLITHER', VW/2, VH/2); ctx.textAlign = 'left';
 })();
 
@@ -2641,6 +2737,7 @@ function drawSkull(ctx, x, y, size, color) {
   const MAX_SUPPLY = 20, TRAIN_TIME = 900; // 15 seconds at 60fps
   let waveSpawnTimer = 0, waveEnemiesLeft = [];
   let stormZapTimer = 0; // Storm caller cooldown
+  let gameSpeed = 1; // 1 = normal, 2 = fast, 3 = super fast
 
   // Funny training messages
   const TRAIN_MSGS = [
@@ -2697,7 +2794,7 @@ function drawSkull(ctx, x, y, size, color) {
   // UI button tracking
   let abilityButtons = [], towerButtons = [];
 
-  // ENEMY TYPES - varied enemy progression
+  // ENEMY TYPES - varied enemy progression with resistance system
   function createEnemy(type, x) {
     const types = {
       basic: { speed: 0.7, hp: 2, damage: 1, size: 26, color: '#e8dcc4', gold: 1, canPickUp: true },
@@ -2706,10 +2803,16 @@ function drawSkull(ctx, x, y, size, color) {
       armored: { speed: 0.4, hp: 4, damage: 2, size: 30, color: '#666688', gold: 3, canPickUp: true, arrowResist: true },
       archer: { speed: 0.5, hp: 2, damage: 1, size: 26, color: '#aa8866', gold: 2, canPickUp: true, ranged: true, fireRate: 150 },
       giant: { speed: 0.3, hp: 10, damage: 3, size: 80, color: '#5a4a3a', gold: 8, canPickUp: false, isGiant: true },
-      bomber: { speed: 0.8, hp: 2, damage: 20, size: 28, color: '#ff6644', gold: 3, canPickUp: true, isBomber: true, fuseTimer: 300 },
+      bomber: { speed: 0.8, hp: 4, damage: 20, size: 28, color: '#ff6644', gold: 3, canPickUp: true, isBomber: true, fuseTimer: 300, arrowResist: true, stormResist: true, superResist: true },
       ram: { speed: 0.4, hp: 12, damage: 10, size: 60, color: '#8b4513', gold: 12, canPickUp: false, isRam: true, arrowResist: true },
       necro: { speed: 0.3, hp: 3, damage: 1, size: 30, color: '#6a0dad', gold: 5, canPickUp: true, isNecro: true, summonTimer: 0 },
-      boss: { speed: 0.25, hp: 80, damage: 5, size: 65, color: '#aa3333', gold: 25, canPickUp: false, isBoss: true }
+      // NEW ENEMY TYPES
+      brute: { speed: 1.2, hp: 6, damage: 3, size: 38, color: '#8b0000', gold: 6, canPickUp: false, arrowResist: true, isBrute: true },
+      warden: { speed: 0.5, hp: 5, damage: 2, size: 32, color: '#2244aa', gold: 8, canPickUp: false, stormResist: true, isWarden: true },
+      charger: { speed: 2.0, hp: 2, damage: 2, size: 18, color: '#ffaa00', gold: 2, canPickUp: true, isCharger: true },
+      mage: { speed: 0.4, hp: 3, damage: 2, size: 28, color: '#9933ff', gold: 7, canPickUp: true, stormResist: true, ranged: true, fireRate: 180, isMage: true },
+      titan: { speed: 0.25, hp: 15, damage: 5, size: 55, color: '#333355', gold: 15, canPickUp: false, arrowResist: true, stormResist: true, isTitan: true },
+      boss: { speed: 0.25, hp: 100, damage: 6, size: 70, color: '#aa3333', gold: 30, canPickUp: false, isBoss: true, arrowResist: true, stormResist: true }
     };
     const t = types[type] || types.basic;
     return {
@@ -2719,7 +2822,10 @@ function drawSkull(ctx, x, y, size, color) {
       canPickUp: t.canPickUp, hasShield: t.hasShield, shieldHP: t.hasShield ? 3 : 0,
       ranged: t.ranged, fireTimer: 0, fireRate: t.fireRate || 100,
       isGiant: t.isGiant, isBoss: t.isBoss, isRam: t.isRam, isBomber: t.isBomber, isNecro: t.isNecro,
-      arrowResist: t.arrowResist || false, // Arrow-resistant enemies take half damage from arrows
+      isBrute: t.isBrute, isWarden: t.isWarden, isCharger: t.isCharger, isMage: t.isMage, isTitan: t.isTitan,
+      arrowResist: t.arrowResist || false, // 35% arrow damage
+      stormResist: t.stormResist || false, // 35% storm damage + barely stunned
+      superResist: t.superResist || false, // 10% damage from all sources (bombers)
       fuseTimer: t.fuseTimer || 0, summonTimer: t.summonTimer || 0,
       attackTimer: 0, phase: Math.random() * Math.PI * 2
     };
@@ -2728,7 +2834,7 @@ function drawSkull(ctx, x, y, size, color) {
   function reset() {
     gold = 0; wave = 0; castleHP = 100; maxHP = 100; kills = 0;
     enemies = []; projectiles = []; particles = []; defenders = [];
-    heldEnemy = null; showShop = false;
+    heldEnemy = null; showShop = false; gameSpeed = 1;
     trainedSupply = 0; trainingQueue = [];
     archerTimers = [];
     bomberUnits = []; stormCount = 0; knightUnits = []; catapultCount = 0;
@@ -2752,20 +2858,31 @@ function drawSkull(ctx, x, y, size, color) {
     const isBossWave = wave % 10 === 0;
     waveEnemiesLeft = [];
 
-    // HARDER WAVES: More enemies, faster scaling
-    const baseCount = Math.min(10 + wave * 4, 70); // Even more enemies per wave
+    // MUCH HARDER WAVES: More enemies, faster scaling
+    const baseCount = Math.min(14 + wave * 5, 90); // Even more enemies per wave
     const giantChance = wave >= 8 ? 0.12 + (wave - 8) * 0.025 : 0; // More giants
     const runnerChance = wave >= 4 ? 0.20 + wave * 0.015 : 0; // More runners
     const armoredChance = wave >= 7 ? 0.10 + (wave - 7) * 0.02 : 0; // Armored enemies
+    const bruteChance = wave >= 9 ? 0.10 + (wave - 9) * 0.02 : 0; // Brutes
+    const wardenChance = wave >= 11 ? 0.08 + (wave - 11) * 0.015 : 0; // Wardens
+    const chargerChance = wave >= 12 ? 0.15 + (wave - 12) * 0.02 : 0; // Chargers
+    const mageChance = wave >= 14 ? 0.10 + (wave - 14) * 0.015 : 0; // Mages
+    const titanChance = wave >= 16 ? 0.06 + (wave - 16) * 0.01 : 0; // Titans
 
     // Build wave composition based on wave number
     if (isBossWave) {
-      // Boss waves: boss + lots of giants + armored + support
-      waveEnemiesLeft.push({ type: 'boss', spawnDelay: 120 });
-      for (let i = 0; i < 6 + Math.floor(wave/4); i++) waveEnemiesLeft.push({ type: 'giant', spawnDelay: 60 });
-      for (let i = 0; i < 4 + Math.floor(wave/8); i++) waveEnemiesLeft.push({ type: 'ram', spawnDelay: 80 });
-      for (let i = 0; i < 3 + Math.floor(wave/10); i++) waveEnemiesLeft.push({ type: 'armored', spawnDelay: 70 });
-      for (let i = 0; i < 15; i++) waveEnemiesLeft.push({ type: 'basic', spawnDelay: 40 });
+      // Boss waves: boss + massive escort army
+      waveEnemiesLeft.push({ type: 'boss', spawnDelay: 100 });
+      for (let i = 0; i < 6 + Math.floor(wave/4); i++) waveEnemiesLeft.push({ type: 'giant', spawnDelay: 50 });
+      for (let i = 0; i < 4 + Math.floor(wave/8); i++) waveEnemiesLeft.push({ type: 'ram', spawnDelay: 60 });
+      for (let i = 0; i < 3 + Math.floor(wave/10); i++) waveEnemiesLeft.push({ type: 'armored', spawnDelay: 55 });
+      // NEW: Add new enemy types as boss escorts
+      if (wave >= 10) for (let i = 0; i < 2 + Math.floor(wave/10); i++) waveEnemiesLeft.push({ type: 'brute', spawnDelay: 40 });
+      if (wave >= 20) for (let i = 0; i < 2 + Math.floor(wave/15); i++) waveEnemiesLeft.push({ type: 'warden', spawnDelay: 50 });
+      if (wave >= 20) for (let i = 0; i < 4 + Math.floor(wave/10); i++) waveEnemiesLeft.push({ type: 'charger', spawnDelay: 25 });
+      if (wave >= 20) for (let i = 0; i < 2 + Math.floor(wave/15); i++) waveEnemiesLeft.push({ type: 'mage', spawnDelay: 55 });
+      if (wave >= 20) for (let i = 0; i < 1 + Math.floor(wave/20); i++) waveEnemiesLeft.push({ type: 'titan', spawnDelay: 70 });
+      for (let i = 0; i < 20; i++) waveEnemiesLeft.push({ type: 'basic', spawnDelay: 30 });
     } else {
       // Normal waves with progressive enemy types
       for (let i = 0; i < baseCount; i++) {
@@ -2783,16 +2900,26 @@ function drawSkull(ctx, x, y, size, color) {
         if (wave >= 7 && roll < armoredChance && progress > 0.3) type = 'armored';
         // Wave 8+: Giants (big & scary) - MORE of them!
         if (wave >= 8 && roll < giantChance && progress > 0.35) type = 'giant';
+        // Wave 9+: Brutes (fast, tough, arrow resistant)
+        if (wave >= 9 && roll < bruteChance && progress > 0.25) type = 'brute';
         // Wave 10+: Battering rams (arrow resistant)
         if (wave >= 10 && roll < 0.08 + (wave-10)*0.015 && progress > 0.4) type = 'ram';
+        // Wave 11+: Wardens (storm shield aura to nearby enemies)
+        if (wave >= 11 && roll < wardenChance && progress > 0.3) type = 'warden';
+        // Wave 12+: Chargers (super fast, small)
+        if (wave >= 12 && roll < chargerChance && progress > 0.2) type = 'charger';
         // Wave 13+: Enemy bombers (click or they explode on castle!)
         if (wave >= 13 && roll < 0.12 && progress > 0.3) type = 'bomber';
+        // Wave 14+: Enemy Mages (ranged, storm resistant)
+        if (wave >= 14 && roll < mageChance && progress > 0.35) type = 'mage';
         // Wave 16+: Necromancers (summon skeletons)
         if (wave >= 16 && roll < 0.10 && progress > 0.35) type = 'necro';
+        // Wave 16+: Titans (massive, resists arrows AND storm)
+        if (wave >= 16 && roll < titanChance && progress > 0.5) type = 'titan';
 
-        // Spawn delay: starts slow, speeds up at end of wave (faster overall)
-        const baseDelay = progress < 0.25 ? 110 : (progress < 0.5 ? 70 : (progress < 0.75 ? 45 : 30));
-        waveEnemiesLeft.push({ type, spawnDelay: baseDelay + Math.random() * 25 });
+        // FASTER spawn delays: 20-90 frames instead of 30-110
+        const baseDelay = progress < 0.25 ? 90 : (progress < 0.5 ? 55 : (progress < 0.75 ? 35 : 20));
+        waveEnemiesLeft.push({ type, spawnDelay: baseDelay + Math.random() * 20 });
       }
     }
 
@@ -2804,9 +2931,13 @@ function drawSkull(ctx, x, y, size, color) {
     if (isBossWave) { waveText = 'BOSS WAVE ' + wave + '!'; waveColor = '#ff4444'; }
     else if (wave === 7) { waveText = 'Wave 7 - ARMORED ENEMIES! Arrows weak!'; waveColor = '#666688'; }
     else if (wave === 8) { waveText = 'Wave 8 - GIANTS INCOMING!'; waveColor = '#ff8844'; }
+    else if (wave === 9) { waveText = 'Wave 9 - BRUTES! Fast & tough!'; waveColor = '#8b0000'; }
     else if (wave === 10) { waveText = 'Wave 10 - BATTERING RAMS!'; waveColor = '#8b4513'; }
+    else if (wave === 11) { waveText = 'Wave 11 - WARDENS! Storm shield aura!'; waveColor = '#2244aa'; }
+    else if (wave === 12) { waveText = 'Wave 12 - CHARGERS! Super fast!'; waveColor = '#ffaa00'; }
     else if (wave === 13) { waveText = 'Wave 13 - ENEMY BOMBERS! Click them!'; waveColor = '#ff6644'; }
-    else if (wave === 16) { waveText = 'Wave 16 - NECROMANCERS!'; waveColor = '#6a0dad'; }
+    else if (wave === 14) { waveText = 'Wave 14 - ENEMY MAGES! Storm resist!'; waveColor = '#9933ff'; }
+    else if (wave === 16) { waveText = 'Wave 16 - TITANS & NECROS!'; waveColor = '#333355'; }
 
     particles.push({ x: W/2, y: 60, vx: 0, vy: 0, life: 150, text: waveText, color: waveColor, big: true });
     updateHUD();
@@ -2996,25 +3127,42 @@ function drawSkull(ctx, x, y, size, color) {
     }
 
     // Storm caller - zaps periodically, uses stormPower and stormSpeed upgrades
+    // Check for warden aura - wardens give nearby enemies storm resistance
+    const wardens = enemies.filter(e => e.isWarden && e.state !== 'dead');
+
     if (stormCount > 0) {
       stormZapTimer++;
-      // stormSpeed upgrade reduces interval (30 frames faster per level)
       const baseInterval = 180 - stormCount * 20 - upgrades.stormSpeed.level * 30;
-      const zapInterval = Math.max(45, baseInterval); // Min 0.75 sec
+      const zapInterval = Math.max(45, baseInterval);
       if (stormZapTimer >= zapInterval) {
         stormZapTimer = 0;
         const targets = enemies.filter(e => (e.state === 'walk' || e.state === 'attack') && e.x > 40 && e.x < CASTLE_X - 80);
         if (targets.length > 0) {
           const target = targets[Math.floor(Math.random() * targets.length)];
-          // Lightning strike visual
           particles.push({ x: target.x + target.size/2, y: 0, lightning: true, targetY: GROUND, life: 25 });
-          // stormPower upgrade adds damage (base 2 + 2 per level)
           const stormDamage = 2 + upgrades.stormPower.level * 2;
           const stunRadius = 70 + upgrades.stormPower.level * 15;
           enemies.forEach(e => {
             if (e.state !== 'dead' && e.state !== 'held' && Math.hypot(e.x - target.x, e.y - target.y) < stunRadius) {
-              e.hp -= stormDamage;
-              if (e.isGiant || e.isRam) { e.state = 'stunned'; e.stunTimer = 120; }
+              // Check storm resistance (native or from warden aura)
+              const nearWarden = wardens.some(w => Math.hypot(e.x - w.x, e.y - w.y) < 80);
+              const hasStormResist = e.stormResist || nearWarden;
+
+              let dmg = stormDamage;
+              if (e.superResist) {
+                dmg = Math.max(1, Math.floor(stormDamage * 0.10)); // 10% damage - super resistant!
+                particles.push({ x: e.x + e.size/2, y: e.y - e.size, vx: 0, vy: -1, life: 25, text: 'IMMUNE!', color: '#ff4444' });
+              } else if (hasStormResist) {
+                dmg = Math.max(1, Math.floor(stormDamage * 0.35)); // 35% damage
+                particles.push({ x: e.x + e.size/2, y: e.y - e.size, vx: 0, vy: -1, life: 25, text: 'RESIST!', color: '#4488ff' });
+              }
+              e.hp -= dmg;
+
+              // Stun big enemies (reduced stun if storm resistant)
+              if (e.isGiant || e.isRam || e.isTitan || e.isBrute) {
+                e.state = 'stunned';
+                e.stunTimer = hasStormResist ? 40 : 120; // Barely stunned if resistant
+              }
               if (e.hp <= 0) killEnemy(e, true);
             }
           });
@@ -3063,10 +3211,14 @@ function drawSkull(ctx, x, y, size, color) {
       if (k.attackTimer >= 90) {
         k.attackTimer = 0;
         // knightPower upgrade: base 3 damage + 2 per level
-        const knightDamage = 3 + upgrades.knightPower.level * 2;
+        let knightDamage = 3 + upgrades.knightPower.level * 2;
         // Hit ONE enemy in range
         const target = enemies.find(e => e.state !== 'dead' && e.state !== 'held' && Math.abs(e.x - k.x) < 55);
         if (target) {
+          if (target.superResist) {
+            knightDamage = Math.max(1, Math.floor(knightDamage * 0.10));
+            particles.push({ x: target.x + target.size/2, y: target.y - target.size, vx: 0, vy: -1, life: 20, text: 'IMMUNE!', color: '#ff4444' });
+          }
           target.hp -= knightDamage;
           particles.push({ x: target.x + target.size/2, y: target.y - target.size/2, vx: k.returning ? 2 : -2, vy: -2, life: 20, color: '#ffdd44', size: 8 });
           particles.push({ x: k.x, y: k.y - 30, vx: 0, vy: 0, life: 25, text: 'SLASH ' + knightDamage + '!', color: '#ffdd44' });
@@ -3087,7 +3239,12 @@ function drawSkull(ctx, x, y, size, color) {
       const nearCastle = enemies.filter(e => e.state === 'walk' && e.x > CASTLE_X - 120 && e.x < CASTLE_X - 60);
       if (nearCastle.length > 0) {
         nearCastle.forEach(e => {
-          e.hp -= upgrades.oilPots.damage[upgrades.oilPots.level - 1];
+          let dmg = upgrades.oilPots.damage[upgrades.oilPots.level - 1];
+          if (e.superResist) {
+            dmg = Math.max(1, Math.floor(dmg * 0.10));
+            particles.push({ x: e.x + e.size/2, y: e.y - e.size, vx: 0, vy: -1, life: 20, text: 'IMMUNE!', color: '#ff4444' });
+          }
+          e.hp -= dmg;
           particles.push({ x: e.x + e.size/2, y: e.y - e.size, vx: (Math.random()-0.5)*2, vy: -2, life: 25, color: '#ff6600', size: 6 });
           if (e.hp <= 0) killEnemy(e, false);
         });
@@ -3110,7 +3267,12 @@ function drawSkull(ctx, x, y, size, color) {
       if (p.type === 'bomb' && p.y >= GROUND - 5) {
         enemies.forEach(e2 => {
           if (e2.state !== 'dead' && Math.hypot(e2.x + e2.size/2 - p.x, e2.y - e2.size/2 - p.y) < p.splashRadius) {
-            e2.hp -= p.damage;
+            let dmg = p.damage;
+            if (e2.superResist) {
+              dmg = Math.max(1, Math.floor(p.damage * 0.10));
+              particles.push({ x: e2.x + e2.size/2, y: e2.y - e2.size, vx: 0, vy: -1, life: 20, text: 'IMMUNE!', color: '#ff4444' });
+            }
+            e2.hp -= dmg;
             if (e2.hp <= 0) killEnemy(e2, false);
           }
         });
@@ -3145,16 +3307,25 @@ function drawSkull(ctx, x, y, size, color) {
           if (p.splash) {
             enemies.forEach(e2 => {
               if (e2.state !== 'dead' && e2.state !== 'held' && Math.hypot(e2.x + e2.size/2 - p.x, e2.y - e2.size/2 - p.y) < p.splashRadius) {
-                e2.hp -= p.damage;
+                let dmg = p.damage;
+                if (e2.superResist) {
+                  dmg = Math.max(1, Math.floor(p.damage * 0.10)); // Super resistant!
+                  particles.push({ x: e2.x + e2.size/2, y: e2.y - e2.size, vx: 0, vy: -1, life: 20, text: 'IMMUNE!', color: '#ff4444' });
+                }
+                e2.hp -= dmg;
                 if (e2.hp <= 0) killEnemy(e2, false);
               }
             });
             for (let k = 0; k < 10; k++) particles.push({ x: p.x, y: p.y, vx: (Math.random()-0.5)*6, vy: (Math.random()-0.5)*6, life: 20, color: p.color, size: 5 });
           } else {
-            // Arrow-resistant enemies take reduced damage from arrows
+            // Arrow-resistant enemies take only 35% damage from arrows
+            // Super-resistant enemies (bombers) take only 10% damage!
             let dmg = p.damage;
-            if (p.isArcherArrow && e.arrowResist) {
-              dmg = Math.max(1, Math.floor(p.damage * 0.5)); // Half damage, min 1
+            if (e.superResist) {
+              dmg = Math.max(1, Math.floor(p.damage * 0.10)); // 10% damage, min 1
+              particles.push({ x: e.x + e.size/2, y: e.y - e.size, vx: 0, vy: -1, life: 25, text: 'IMMUNE!', color: '#ff4444', size: 8 });
+            } else if (p.isArcherArrow && e.arrowResist) {
+              dmg = Math.max(1, Math.floor(p.damage * 0.35)); // 35% damage, min 1
               particles.push({ x: e.x + e.size/2, y: e.y - e.size, vx: 0, vy: -1, life: 20, text: 'RESIST', color: '#6666aa', size: 8 });
             }
             if (e.hasShield && e.shieldHP > 0) e.shieldHP -= dmg;
@@ -3203,16 +3374,13 @@ function drawSkull(ctx, x, y, size, color) {
             currentTrainMsg = TRAIN_MSGS[Math.floor(Math.random() * TRAIN_MSGS.length)];
             particles.push({ x: CASTLE_X - 60, y: GROUND - 80 - (trainingQueue.length - 1) * 25, vx: 0, vy: 0, life: 60, text: 'CAPTURED! Slot ' + trainingQueue.length, color: '#88ffff' });
           } else if (e.peakHeight < 0) {
-            // REALLY high throw - went ABOVE the screen! 15g bonus
+            // THROWN OFF SCREEN - only way to kill! Full 15g bonus
             killEnemyWithBonus(e, 15, 'SKY HIGH!');
-          } else if (heightReached > 150) {
-            // High throw (but not above screen) - 10-12g
-            const throwBonus = 10 + Math.floor(Math.random() * 3);
-            killEnemyWithBonus(e, throwBonus);
           } else {
-            // Not thrown high enough - skeleton SURVIVES!
+            // Didn't leave screen - skeleton SURVIVES no matter how high!
             e.y = GROUND; e.state = 'walk'; e.vx = 0; e.vy = 0; e.peakHeight = null;
-            particles.push({ x: e.x + e.size/2, y: e.y - e.size, vx: 0, vy: -1, life: 40, text: 'Too low!', color: '#ff8888' });
+            const msgOptions = ['Still alive!', 'Not high enough!', 'Throw HIGHER!', 'Off screen to kill!'];
+            particles.push({ x: e.x + e.size/2, y: e.y - e.size, vx: 0, vy: -1, life: 50, text: msgOptions[Math.floor(Math.random() * msgOptions.length)], color: '#ff8888' });
           }
         }
         continue;
@@ -3235,7 +3403,12 @@ function drawSkull(ctx, x, y, size, color) {
         e.fireTimer++;
         if (e.fireTimer >= e.fireRate) {
           e.fireTimer = 0;
-          projectiles.push({ x: e.x + e.size, y: e.y - e.size/2, vx: 4, vy: 0, damage: e.damage, type: 'enemyArrow', color: '#ff6666', size: 3, isEnemy: true });
+          if (e.isMage) {
+            // Mage fires purple magic bolt
+            projectiles.push({ x: e.x + e.size, y: e.y - e.size/2, vx: 3.5, vy: 0, damage: e.damage, type: 'mageBolt', color: '#cc33ff', size: 6, isEnemy: true, isMageBolt: true });
+          } else {
+            projectiles.push({ x: e.x + e.size, y: e.y - e.size/2, vx: 4, vy: 0, damage: e.damage, type: 'enemyArrow', color: '#ff6666', size: 3, isEnemy: true });
+          }
         }
       }
 
@@ -3317,7 +3490,10 @@ function drawSkull(ctx, x, y, size, color) {
   }
 
   function drawSkullEnemy(e) {
-    const s = e.size * 0.4; // scale factor
+    // Big enemies are taller! Scale up height for giants, titans, rams, boss
+    const isBig = e.isGiant || e.isTitan || e.isRam || e.isBoss || e.isBrute;
+    const heightMult = isBig ? 0.55 : 0.4; // Taller for big guys
+    const s = e.size * heightMult; // scale factor
     const cx = e.x + e.size/2, baseY = e.y;
     const walkBob = e.state === 'walk' ? Math.sin(Date.now() * 0.01 + e.phase) * 2 : 0;
     const legSwing = e.state === 'walk' ? Math.sin(Date.now() * 0.012 + e.phase) * 8 : 0;
@@ -3441,6 +3617,110 @@ function drawSkull(ctx, x, y, size, color) {
       ctx.beginPath(); ctx.moveTo(cx + s * 0.8, baseY - s * 2.5 + walkBob); ctx.lineTo(cx + s * 0.8, baseY); ctx.stroke();
       ctx.fillStyle = '#ff00ff';
       ctx.beginPath(); ctx.arc(cx + s * 0.8, baseY - s * 2.7 + walkBob, 4, 0, Math.PI * 2); ctx.fill();
+    }
+    // BRUTE - spiked shoulder pads (dark red, fast & tough)
+    if (e.isBrute) {
+      ctx.fillStyle = '#550000';
+      // Left shoulder pad
+      ctx.beginPath();
+      ctx.moveTo(cx - s * 0.8, baseY - s * 1.9 + walkBob);
+      ctx.lineTo(cx - s * 0.3, baseY - s * 2.1 + walkBob);
+      ctx.lineTo(cx - s * 0.3, baseY - s * 1.5 + walkBob);
+      ctx.fill();
+      // Right shoulder pad
+      ctx.beginPath();
+      ctx.moveTo(cx + s * 0.8, baseY - s * 1.9 + walkBob);
+      ctx.lineTo(cx + s * 0.3, baseY - s * 2.1 + walkBob);
+      ctx.lineTo(cx + s * 0.3, baseY - s * 1.5 + walkBob);
+      ctx.fill();
+      // Spikes on shoulders
+      ctx.fillStyle = '#888';
+      ctx.beginPath(); ctx.moveTo(cx - s * 0.7, baseY - s * 2.1 + walkBob); ctx.lineTo(cx - s * 0.65, baseY - s * 2.5 + walkBob); ctx.lineTo(cx - s * 0.55, baseY - s * 2.1 + walkBob); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(cx + s * 0.7, baseY - s * 2.1 + walkBob); ctx.lineTo(cx + s * 0.65, baseY - s * 2.5 + walkBob); ctx.lineTo(cx + s * 0.55, baseY - s * 2.1 + walkBob); ctx.fill();
+    }
+    // WARDEN - blue aura ring (gives storm resist to nearby)
+    if (e.isWarden) {
+      // Pulsing blue aura around the warden
+      const auraPulse = 0.3 + Math.sin(Date.now() * 0.005) * 0.15;
+      ctx.strokeStyle = 'rgba(34, 68, 170, ' + auraPulse + ')';
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(cx, baseY - s, 80, 0, Math.PI * 2); ctx.stroke();
+      // Inner glow
+      ctx.strokeStyle = 'rgba(100, 150, 255, ' + (auraPulse + 0.2) + ')';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(cx, baseY - s, 40, 0, Math.PI * 2); ctx.stroke();
+      // Shield emblem on chest
+      ctx.fillStyle = '#3355aa';
+      ctx.beginPath();
+      ctx.moveTo(cx, baseY - s * 2.1 + walkBob);
+      ctx.lineTo(cx - s * 0.25, baseY - s * 1.8 + walkBob);
+      ctx.lineTo(cx, baseY - s * 1.4 + walkBob);
+      ctx.lineTo(cx + s * 0.25, baseY - s * 1.8 + walkBob);
+      ctx.fill();
+    }
+    // CHARGER - speed lines behind them (super fast!)
+    if (e.isCharger) {
+      ctx.strokeStyle = 'rgba(255, 170, 0, 0.5)';
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 4; i++) {
+        const lineY = baseY - s * (0.5 + i * 0.5) + walkBob;
+        const lineLen = 15 + Math.random() * 10;
+        ctx.beginPath();
+        ctx.moveTo(cx + s * 0.5 + 5 + i * 3, lineY);
+        ctx.lineTo(cx + s * 0.5 + 5 + i * 3 + lineLen, lineY);
+        ctx.stroke();
+      }
+      // Angry eyes (orange glow)
+      ctx.fillStyle = '#ffaa00';
+      ctx.beginPath(); ctx.arc(cx - s * 0.25, baseY - s * 2.9 + walkBob, s * 0.12, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx + s * 0.25, baseY - s * 2.9 + walkBob, s * 0.12, 0, Math.PI * 2); ctx.fill();
+    }
+    // MAGE - purple robes with glowing orb (different from necro)
+    if (e.isMage) {
+      // Flowing robe
+      ctx.fillStyle = 'rgba(153, 51, 255, 0.7)';
+      ctx.beginPath();
+      ctx.moveTo(cx - s * 0.6, baseY - s * 2 + walkBob);
+      ctx.lineTo(cx + s * 0.6, baseY - s * 2 + walkBob);
+      ctx.lineTo(cx + s * 0.7, baseY);
+      ctx.lineTo(cx - s * 0.7, baseY);
+      ctx.fill();
+      // Glowing orb floating near hand
+      const orbFloat = Math.sin(Date.now() * 0.008) * 4;
+      ctx.fillStyle = '#ff44ff';
+      ctx.shadowColor = '#ff00ff'; ctx.shadowBlur = 10;
+      ctx.beginPath(); ctx.arc(cx - s * 0.9, baseY - s * 1.6 + walkBob + orbFloat, s * 0.25, 0, Math.PI * 2); ctx.fill();
+      ctx.shadowBlur = 0;
+      // Purple eye glow
+      ctx.fillStyle = '#cc33ff';
+      ctx.beginPath(); ctx.arc(cx - s * 0.25, baseY - s * 2.9 + walkBob, s * 0.12, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx + s * 0.25, baseY - s * 2.9 + walkBob, s * 0.12, 0, Math.PI * 2); ctx.fill();
+    }
+    // TITAN - heavy armor plates (resists both arrows AND storm)
+    if (e.isTitan) {
+      // Chest plate
+      ctx.fillStyle = '#444466';
+      ctx.beginPath();
+      ctx.moveTo(cx - s * 0.6, baseY - s * 2.2 + walkBob);
+      ctx.lineTo(cx + s * 0.6, baseY - s * 2.2 + walkBob);
+      ctx.lineTo(cx + s * 0.7, baseY - s * 1.2 + walkBob);
+      ctx.lineTo(cx - s * 0.7, baseY - s * 1.2 + walkBob);
+      ctx.fill();
+      // Shoulder plates
+      ctx.fillStyle = '#555577';
+      ctx.fillRect(cx - s * 1, baseY - s * 2.3 + walkBob, s * 0.5, s * 0.4);
+      ctx.fillRect(cx + s * 0.5, baseY - s * 2.3 + walkBob, s * 0.5, s * 0.4);
+      // Leg armor
+      ctx.fillRect(cx - s * 0.5, baseY - s * 0.6, s * 0.3, s * 0.6);
+      ctx.fillRect(cx + s * 0.2, baseY - s * 0.6, s * 0.3, s * 0.6);
+      // Helmet visor
+      ctx.fillStyle = '#333355';
+      ctx.fillRect(cx - s * 0.4, baseY - s * 3 + walkBob, s * 0.8, s * 0.3);
+      // Resistance icon (small shield + lightning bolt)
+      ctx.fillStyle = '#667788';
+      ctx.font = '8px Arial'; ctx.textAlign = 'center';
+      ctx.fillText('⚡🛡️', cx, baseY - s * 3.6);
+      ctx.textAlign = 'left';
     }
     // HP bar for tough enemies
     if (e.maxHp > 1) {
@@ -3750,6 +4030,17 @@ function drawSkull(ctx, x, y, size, color) {
         ctx.shadowBlur = 10; ctx.shadowColor = p.color;
         ctx.beginPath(); ctx.arc(p.x, p.y, p.size/2, 0, Math.PI * 2); ctx.fill();
         ctx.shadowBlur = 0;
+      } else if (p.type === 'mageBolt') {
+        // Enemy mage purple bolt with glow trail
+        ctx.shadowBlur = 12; ctx.shadowColor = '#cc33ff';
+        ctx.fillStyle = '#ff66ff';
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.size/2, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+        // Trail particles
+        ctx.fillStyle = 'rgba(153, 51, 255, 0.5)';
+        for (let i = 1; i <= 3; i++) {
+          ctx.beginPath(); ctx.arc(p.x - p.vx * i * 3, p.y, p.size/2 - i, 0, Math.PI * 2); ctx.fill();
+        }
       } else {
         ctx.strokeStyle = p.color; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.vx * 4, p.y - p.vy * 4); ctx.stroke();
@@ -3826,6 +4117,15 @@ function drawSkull(ctx, x, y, size, color) {
     });
     ctx.textAlign = 'left';
 
+    // SPEED INDICATOR (top center)
+    if (gameSpeed > 1) {
+      ctx.fillStyle = 'rgba(100,100,0,0.8)'; ctx.fillRect(W/2 - 40, 5, 80, 20);
+      ctx.strokeStyle = '#ffff00'; ctx.lineWidth = 1; ctx.strokeRect(W/2 - 40, 5, 80, 20);
+      ctx.fillStyle = '#ffff00'; ctx.font = 'bold 12px Arial'; ctx.textAlign = 'center';
+      ctx.fillText(gameSpeed + 'X SPEED', W/2, 19);
+      ctx.textAlign = 'left';
+    }
+
     // CONDENSED UI - TOP RIGHT (doesn't cover moon on left)
     ctx.fillStyle = 'rgba(0,0,0,0.75)'; ctx.fillRect(W - 145, 5, 140, 70);
     ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 1; ctx.strokeRect(W - 145, 5, 140, 70);
@@ -3884,119 +4184,124 @@ function drawSkull(ctx, x, y, size, color) {
 
   function drawShop() {
     shopButtons = []; // Reset buttons
-    ctx.fillStyle = 'rgba(0,0,0,0.95)'; ctx.fillRect(50, 30, W - 100, H - 60);
-    ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 2; ctx.strokeRect(50, 30, W - 100, H - 60);
+    ctx.fillStyle = 'rgba(0,0,0,0.95)'; ctx.fillRect(40, 25, W - 80, H - 50);
+    ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 2; ctx.strokeRect(40, 25, W - 80, H - 50);
 
     // X CLOSE BUTTON (top right)
     ctx.fillStyle = '#aa3333';
-    ctx.fillRect(W - 80, 35, 25, 20);
-    ctx.strokeStyle = '#ff4444'; ctx.lineWidth = 1; ctx.strokeRect(W - 80, 35, 25, 20);
+    ctx.fillRect(W - 70, 30, 25, 20);
+    ctx.strokeStyle = '#ff4444'; ctx.lineWidth = 1; ctx.strokeRect(W - 70, 30, 25, 20);
     ctx.fillStyle = '#fff'; ctx.font = 'bold 14px Arial'; ctx.textAlign = 'center';
-    ctx.fillText('X', W - 67, 50);
+    ctx.fillText('X', W - 57, 45);
 
-    ctx.fillStyle = '#d4af37'; ctx.font = 'bold 18px Cinzel';
-    ctx.fillText('SHOP - Gold: ' + gold, W/2, 55);
-    ctx.font = '10px Cinzel'; ctx.fillText('Click X or outside to close | Scroll: arrows or wheel', W/2, 72);
+    ctx.fillStyle = '#d4af37'; ctx.font = 'bold 16px Cinzel';
+    ctx.fillText('SHOP - Gold: ' + gold, W/2, 48);
 
-    // SCROLL BUTTONS for upgrades (left column)
-    const scrollBtnW = 30, scrollBtnH = 22;
-    const scrollUpY = 85, scrollDownY = H - 90;
-    const upgradeCount = Object.keys(upgrades).length;
-    const maxScroll = Math.max(0, (upgradeCount * 34) - 220); // How far we can scroll
+    // Helper to draw upgrade button
+    function drawUpgradeBtn(name, x, y, w, color) {
+      const u = upgrades[name];
+      const maxed = u.level >= u.maxLevel;
+      const canBuy = !maxed && gold >= u.cost[u.level];
+      const cost = maxed ? 'MAX' : u.cost[u.level] + 'g';
+      const levelText = u.maxLevel > 1 ? ' Lv' + u.level : (u.level > 0 ? ' \u2713' : '');
 
-    // UP arrow
-    ctx.fillStyle = shopScrollY > 0 ? '#4a5a4a' : '#333';
-    ctx.fillRect(55, scrollUpY, scrollBtnW, scrollBtnH);
-    ctx.strokeStyle = shopScrollY > 0 ? '#6a6' : '#444'; ctx.lineWidth = 1;
-    ctx.strokeRect(55, scrollUpY, scrollBtnW, scrollBtnH);
-    ctx.fillStyle = shopScrollY > 0 ? '#fff' : '#666'; ctx.font = 'bold 14px Arial';
-    ctx.fillText('\u25B2', 70, scrollUpY + 16);
-    if (shopScrollY > 0) shopButtons.push({ x: 55, y: scrollUpY, w: scrollBtnW, h: scrollBtnH, action: 'scrollUp' });
+      ctx.fillStyle = maxed ? '#2a3a2a' : (canBuy ? color : '#2a2a3a');
+      ctx.fillRect(x, y, w, 22);
+      ctx.strokeStyle = maxed ? '#4a4' : (canBuy ? '#6a6' : '#444');
+      ctx.lineWidth = 1; ctx.strokeRect(x, y, w, 22);
 
-    // DOWN arrow
-    ctx.fillStyle = shopScrollY < maxScroll ? '#4a5a4a' : '#333';
-    ctx.fillRect(55, scrollDownY, scrollBtnW, scrollBtnH);
-    ctx.strokeStyle = shopScrollY < maxScroll ? '#6a6' : '#444';
-    ctx.strokeRect(55, scrollDownY, scrollBtnW, scrollBtnH);
-    ctx.fillStyle = shopScrollY < maxScroll ? '#fff' : '#666';
-    ctx.fillText('\u25BC', 70, scrollDownY + 16);
-    if (shopScrollY < maxScroll) shopButtons.push({ x: 55, y: scrollDownY, w: scrollBtnW, h: scrollBtnH, action: 'scrollDown' });
+      ctx.fillStyle = maxed ? '#6a6' : (canBuy ? '#ddd' : '#555');
+      ctx.font = '9px Cinzel'; ctx.textAlign = 'center';
+      const label = name.replace(/([A-Z])/g, ' $1').trim().toUpperCase();
+      ctx.fillText(label + levelText + ' ' + cost, x + w/2, y + 15);
+      ctx.textAlign = 'left';
 
-    // UPGRADES section (left) - with scroll clipping
-    ctx.fillStyle = '#aaa'; ctx.font = 'bold 14px Cinzel';
-    ctx.fillText('UPGRADES', 170, 95);
+      if (!maxed) shopButtons.push({ x, y, w, h: 22, action: 'upgrade', name });
+    }
 
-    // Visible area for upgrades
-    const visibleTop = 105, visibleBottom = H - 95;
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(70, visibleTop, 200, visibleBottom - visibleTop);
-    ctx.clip();
+    let y = 62;
+    const col1 = 55, col2 = 145;
+    const btnW = 130; // Wider buttons for text to fit
 
-    let y = 105 - shopScrollY;
-    Object.entries(upgrades).forEach(([name, u]) => {
-      // Only draw if in visible area
-      if (y + 28 > visibleTop && y < visibleBottom) {
-        const maxed = u.level >= u.maxLevel;
-        const canBuy = !maxed && gold >= u.cost[u.level];
-        const cost = maxed ? 'MAX' : u.cost[u.level] + 'g';
-        const levelText = u.maxLevel > 1 ? ' [' + u.level + '/' + u.maxLevel + ']' : '';
+    // ROW 1: Castle Defenses
+    ctx.fillStyle = '#888'; ctx.font = 'bold 10px Cinzel'; ctx.textAlign = 'left';
+    ctx.fillText('CASTLE:', col1, y + 15);
+    drawUpgradeBtn('walls', col2, y, btnW, '#3a4a3a');
+    drawUpgradeBtn('moat', col2 + btnW + 5, y, btnW, '#3a4a5a');
+    drawUpgradeBtn('oilPots', col2 + btnW*2 + 10, y, btnW, '#5a3a2a');
+    y += 28;
 
-        // Draw button
-        ctx.fillStyle = maxed ? '#2a4a2a' : (canBuy ? '#3a5a3a' : '#3a3a4a');
-        ctx.fillRect(90, y, 175, 28);
-        ctx.strokeStyle = maxed ? '#4a4' : (canBuy ? '#6a6' : '#555');
-        ctx.lineWidth = 1; ctx.strokeRect(90, y, 175, 28);
+    // ROW 2: Training
+    ctx.fillStyle = '#88ffff'; ctx.fillText('TRAINING:', col1, y + 15);
+    drawUpgradeBtn('training', col2, y, btnW, '#3a5a5a');
+    drawUpgradeBtn('trainingSlots', col2 + btnW + 5, y, btnW, '#3a5a5a');
+    drawUpgradeBtn('trainingSpeed', col2 + btnW*2 + 10, y, btnW, '#3a5a5a');
+    y += 28;
 
-        ctx.fillStyle = maxed ? '#6a6' : (canBuy ? '#ddd' : '#666');
-        ctx.font = '10px Cinzel'; ctx.textAlign = 'left';
-        ctx.fillText(name.toUpperCase() + levelText + ' ' + cost, 95, y + 18);
+    // ROW 3: Archers (green)
+    ctx.fillStyle = '#44ff44'; ctx.fillText('ARCHERS:', col1, y + 15);
+    drawUpgradeBtn('archerTower', col2, y, btnW, '#2a5a2a');
+    drawUpgradeBtn('archerSpeed', col2 + btnW + 5, y, btnW, '#2a5a2a');
+    drawUpgradeBtn('archerPower', col2 + btnW*2 + 10, y, btnW, '#2a5a2a');
+    y += 28;
 
-        if (!maxed && y > visibleTop && y + 28 < visibleBottom) {
-          shopButtons.push({ x: 90, y, w: 175, h: 28, action: 'upgrade', name });
-        }
-      }
-      y += 34;
-    });
-    ctx.restore();
+    // ROW 4: Bombers (red)
+    ctx.fillStyle = '#ff4444'; ctx.fillText('BOMBERS:', col1, y + 15);
+    drawUpgradeBtn('bomberBros', col2, y, btnW, '#5a2a2a');
+    drawUpgradeBtn('bomberPower', col2 + btnW + 5, y, btnW, '#5a2a2a');
+    y += 28;
 
-    // ABILITIES section (right) - no scroll needed (only 3)
-    ctx.fillStyle = '#aaa'; ctx.font = 'bold 14px Cinzel'; ctx.textAlign = 'center';
-    ctx.fillText('ABILITIES', W - 170, 95);
-    y = 110;
+    // ROW 5: Storm (blue)
+    ctx.fillStyle = '#4488ff'; ctx.fillText('STORM:', col1, y + 15);
+    drawUpgradeBtn('stormCaller', col2, y, btnW, '#2a3a5a');
+    drawUpgradeBtn('stormPower', col2 + btnW + 5, y, btnW, '#2a3a5a');
+    drawUpgradeBtn('stormSpeed', col2 + btnW*2 + 10, y, btnW, '#2a3a5a');
+    y += 28;
+
+    // ROW 6: Knights (dark)
+    ctx.fillStyle = '#aaaaaa'; ctx.fillText('KNIGHTS:', col1, y + 15);
+    drawUpgradeBtn('knights', col2, y, btnW, '#3a3a3a');
+    drawUpgradeBtn('knightPower', col2 + btnW + 5, y, btnW, '#3a3a3a');
+    drawUpgradeBtn('knightLaps', col2 + btnW*2 + 10, y, btnW, '#3a3a3a');
+    y += 28;
+
+    // ROW 7: Catapult (purple)
+    ctx.fillStyle = '#9944ff'; ctx.fillText('SIEGE:', col1, y + 15);
+    drawUpgradeBtn('catapult', col2, y, btnW, '#4a2a5a');
+    y += 32;
+
+    // ABILITIES section
+    ctx.fillStyle = '#d4af37'; ctx.font = 'bold 12px Cinzel'; ctx.textAlign = 'left';
+    ctx.fillText('ABILITIES (unlock once, pay to use):', col1, y + 12);
+    y += 18;
+    let ax = col1;
     Object.entries(abilities).forEach(([name, a]) => {
       const canBuy = !a.unlocked && gold >= a.unlockCost;
-      const status = a.unlocked ? 'OWNED (use: ' + a.useCost + 'g)' : a.unlockCost + 'g';
+      const status = a.unlocked ? 'USE: ' + a.useCost + 'g' : 'UNLOCK: ' + a.unlockCost + 'g';
 
-      // Draw button (larger for easy clicking)
-      ctx.fillStyle = a.unlocked ? '#2a4a2a' : (canBuy ? '#4a4a2a' : '#3a3a4a');
-      ctx.fillRect(W - 270, y, 200, 35);
-      ctx.strokeStyle = a.unlocked ? '#4a4' : (canBuy ? '#aa6' : '#555');
-      ctx.lineWidth = 1; ctx.strokeRect(W - 270, y, 200, 35);
+      ctx.fillStyle = a.unlocked ? '#2a4a2a' : (canBuy ? '#4a4a2a' : '#2a2a3a');
+      ctx.fillRect(ax, y, 130, 28);
+      ctx.strokeStyle = a.unlocked ? '#4a4' : (canBuy ? '#aa6' : '#444');
+      ctx.lineWidth = 1; ctx.strokeRect(ax, y, 130, 28);
 
-      ctx.fillStyle = a.unlocked ? '#6a6' : (canBuy ? '#ddd' : '#666');
-      ctx.font = '12px Cinzel'; ctx.textAlign = 'left';
-      ctx.fillText(name.toUpperCase(), W - 262, y + 15);
-      ctx.font = '10px Cinzel';
-      ctx.fillText(status, W - 262, y + 28);
+      ctx.fillStyle = a.unlocked ? '#6a6' : (canBuy ? '#ddd' : '#555');
+      ctx.font = '10px Cinzel'; ctx.textAlign = 'center';
+      ctx.fillText(name.toUpperCase(), ax + 65, y + 12);
+      ctx.font = '8px Cinzel';
+      ctx.fillText(status, ax + 65, y + 23);
+      ctx.textAlign = 'left';
 
-      if (!a.unlocked) shopButtons.push({ x: W - 270, y, w: 200, h: 35, action: 'ability', name });
-      y += 42;
+      if (!a.unlocked) shopButtons.push({ x: ax, y, w: 130, h: 28, action: 'ability', name });
+      ax += 140;
     });
+    y += 36;
 
-    // Info
-    ctx.fillStyle = '#888'; ctx.font = '10px Cinzel'; ctx.textAlign = 'center';
-    ctx.fillText('TRAINING: Throw enemies INTO castle (left side) to capture', W/2, H - 115);
-    ctx.fillText('Click TOWER FLAGS to assign trained skeletons:', W/2, H - 100);
-    ctx.fillStyle = '#44ff44'; ctx.fillText('GREEN=Archer', W/2 - 120, H - 85);
-    ctx.fillStyle = '#ff4444'; ctx.fillText('RED=Bomber', W/2 - 30, H - 85);
-    ctx.fillStyle = '#4488ff'; ctx.fillText('BLUE=Storm', W/2 + 50, H - 85);
-    ctx.fillStyle = '#888'; ctx.fillText('BLACK=Knight', W/2 + 130, H - 85);
-    ctx.fillStyle = '#9944ff'; ctx.fillText('PURPLE=Catapult', W/2, H - 70);
-    ctx.fillStyle = '#ffff00'; ctx.font = '9px Cinzel';
-    ctx.fillText('ABILITIES (top buttons): ARROWS=rain damage | STORM=stun+damage | BOULDER=wipe screen!', W/2, H - 52);
-    ctx.fillStyle = '#ff8844';
-    ctx.fillText('Wave 8: Giants | Wave 10: Battering Rams | Wave 13: Enemy Bombers (click to defuse!)', W/2, H - 38);
+    // Info at bottom
+    ctx.fillStyle = '#888'; ctx.font = '9px Cinzel'; ctx.textAlign = 'center';
+    ctx.fillText('TRAINING: Throw enemies OFF SCREEN to kill for gold | Throw INTO castle to capture', W/2, y + 10);
+    ctx.fillText('Click colored TOWER FLAGS to assign trained skeletons', W/2, y + 22);
+    ctx.fillStyle = '#ff8844'; ctx.font = '8px Cinzel';
+    ctx.fillText('ENEMY BOMBERS are nearly immune to archers/storm - CLICK them to defuse!', W/2, y + 34);
     ctx.textAlign = 'left';
   }
 
@@ -4033,7 +4338,19 @@ function drawSkull(ctx, x, y, size, color) {
     addToLeaderboard('castle', wave * 100 + kills);
   }
 
-  function loop() { if (state !== 'running') return; update(); draw(); raf = requestAnimationFrame(loop); }
+  function loop() {
+    if (state !== 'running') return;
+    // Run multiple updates for fast forward
+    for (let i = 0; i < gameSpeed; i++) update();
+    draw();
+    raf = requestAnimationFrame(loop);
+  }
+
+  function toggleSpeed() {
+    gameSpeed = gameSpeed >= 3 ? 1 : gameSpeed + 1;
+    const speedText = gameSpeed === 1 ? 'NORMAL' : (gameSpeed === 2 ? '2X FAST' : '3X FAST');
+    particles.push({ x: W/2, y: 80, vx: 0, vy: 0, life: 60, text: 'Speed: ' + speedText, color: '#ffff00', big: true });
+  }
 
   function start() {
     if (state === 'idle' || state === 'over') { reset(); state = 'running'; spawnWave(); loop(); }
@@ -4162,9 +4479,9 @@ function drawSkull(ctx, x, y, size, color) {
       const b = bomberUnits[i];
       if (mouseX > b.x - 25 && mouseX < b.x + 25 && mouseY > b.y - 55 && mouseY < b.y) {
         const explodeX = b.x, explodeY = b.y - 20;
-        // Bomber damage: base 8 + 4 per upgrade level
-        const bomberDamage = 8 + upgrades.bomberPower.level * 4;
-        const blastRadius = 80 + upgrades.bomberPower.level * 15;
+        // Bomber damage: base 15 + 8 per upgrade level (much stronger!)
+        const bomberDamage = 15 + upgrades.bomberPower.level * 8;
+        const blastRadius = 100 + upgrades.bomberPower.level * 20;
         enemies.forEach(e => {
           if (e.state !== 'dead' && Math.hypot(e.x + e.size/2 - explodeX, e.y - e.size/2 - explodeY) < blastRadius) {
             e.hp -= bomberDamage;
@@ -4179,18 +4496,24 @@ function drawSkull(ctx, x, y, size, color) {
       }
     }
 
-    // ENEMY interactions
+    // ENEMY interactions - larger touch area for mobile (20px margin)
+    const touchMargin = 20;
     for (const e of enemies) {
       if ((e.state === 'walk' || e.state === 'attack' || e.state === 'stunned') &&
-          mouseX > e.x && mouseX < e.x + e.size && mouseY > e.y - e.size && mouseY < e.y) {
+          mouseX > e.x - touchMargin && mouseX < e.x + e.size + touchMargin &&
+          mouseY > e.y - e.size - touchMargin && mouseY < e.y + touchMargin) {
         // Enemy bombers - click to defuse!
         if (e.isBomber) {
           killEnemy(e, false);
           particles.push({ x: e.x, y: e.y - 30, vx: 0, vy: 0, life: 40, text: 'DEFUSED!', color: '#88ff88' });
           return;
         }
-        if (e.canPickUp) { e.state = 'held'; heldEnemy = e; }
-        else if ((e.isGiant || e.isRam || e.isBoss) && e.state !== 'stunned') {
+        if (e.canPickUp) {
+          e.state = 'held';
+          heldEnemy = e;
+          particles.push({ x: e.x + e.size/2, y: e.y - e.size - 5, vx: 0, vy: -1, life: 25, text: 'GRABBED!', color: '#88ff88' });
+        }
+        else if ((e.isGiant || e.isRam || e.isBoss || e.isTitan || e.isBrute) && e.state !== 'stunned') {
           // Click to make big guys fall down!
           e.state = 'stunned';
           e.stunTimer = 150;
@@ -4244,10 +4567,47 @@ function drawSkull(ctx, x, y, size, color) {
   document.addEventListener('mouseup', releaseHeld);
   C.addEventListener('mouseleave', releaseHeld);
 
-  // Touch support
-  C.addEventListener('touchstart', ev => { ev.preventDefault(); const t = ev.touches[0]; C.dispatchEvent(new MouseEvent('mousedown', { clientX: t.clientX, clientY: t.clientY })); });
-  C.addEventListener('touchmove', ev => { ev.preventDefault(); const t = ev.touches[0]; const rect = C.getBoundingClientRect(); mouseX = (t.clientX - rect.left) * (W / rect.width); mouseY = (t.clientY - rect.top) * (H / rect.height); });
-  C.addEventListener('touchend', ev => { ev.preventDefault(); C.dispatchEvent(new MouseEvent('mouseup')); });
+  // Touch support with velocity tracking for better throwing
+  let lastTouchX = 0, lastTouchY = 0, touchVelX = 0, touchVelY = 0;
+  C.addEventListener('touchstart', ev => {
+    ev.preventDefault();
+    const t = ev.touches[0];
+    const rect = C.getBoundingClientRect();
+    lastTouchX = (t.clientX - rect.left) * (W / rect.width);
+    lastTouchY = (t.clientY - rect.top) * (H / rect.height);
+    mouseX = lastTouchX; mouseY = lastTouchY;
+    touchVelX = 0; touchVelY = 0;
+    C.dispatchEvent(new MouseEvent('mousedown', { clientX: t.clientX, clientY: t.clientY }));
+  });
+  C.addEventListener('touchmove', ev => {
+    ev.preventDefault();
+    const t = ev.touches[0];
+    const rect = C.getBoundingClientRect();
+    const newX = (t.clientX - rect.left) * (W / rect.width);
+    const newY = (t.clientY - rect.top) * (H / rect.height);
+    touchVelX = (newX - lastTouchX) * 0.5 + touchVelX * 0.5; // Smooth velocity
+    touchVelY = (newY - lastTouchY) * 0.5 + touchVelY * 0.5;
+    lastTouchX = newX; lastTouchY = newY;
+    mouseX = newX; mouseY = newY;
+  });
+  C.addEventListener('touchend', ev => {
+    ev.preventDefault();
+    // Apply swipe velocity to throw
+    if (heldEnemy) {
+      const castleLeft = CASTLE_X - 120;
+      const nearCastle = heldEnemy.x > castleLeft - 60;
+      if (nearCastle) {
+        heldEnemy.state = 'fall';
+        heldEnemy.vx = 0; heldEnemy.vy = 2;
+      } else {
+        heldEnemy.state = 'fall';
+        // Use swipe velocity for throwing
+        heldEnemy.vx = touchVelX * 0.8;
+        heldEnemy.vy = Math.min(-5, touchVelY * 1.2 - 8); // Always throw up
+      }
+      heldEnemy = null;
+    }
+  });
 
   // Keyboard
   document.addEventListener('keydown', ev => {
@@ -4286,6 +4646,7 @@ function drawSkull(ctx, x, y, size, color) {
 
   window.castleStart = start;
   window.castleShop = function() { showShop = !showShop; if (showShop) shopScrollY = 0; };
+  window.castleSpeed = toggleSpeed;
   window.castlePause = function() { if (state === 'running') cancelAnimationFrame(raf); };
 
   // Initial draw
