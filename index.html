@@ -41,7 +41,8 @@
   .game-over-msg p { color: var(--bone); margin: 0.2rem 0; font-size: 0.9rem; }
   .game-over-msg .funny { color: var(--red); font-style: italic; margin-top: 0.4rem; font-size: 0.85rem; }
   .canvas-wrap { position: relative; }
-  .mobile-controls { display: none; gap: 3rem; margin-top: 0.8rem; justify-content: center; align-items: center; }
+  .mobile-controls { display: none; gap: 4rem; margin-top: 0.8rem; justify-content: space-between; align-items: center; width: 100%; padding: 0 1rem; box-sizing: border-box; }
+  .mobile-left, .mobile-right { display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
   @media (max-width: 800px) { .mobile-controls { display: flex; } }
   .mobile-dpad { display: flex; flex-direction: column; align-items: center; gap: 3px; }
   .mobile-dpad-row { display: flex; gap: 3px; }
@@ -54,11 +55,53 @@
   .joystick-knob { width: 50px; height: 50px; background: linear-gradient(135deg, #555, #888); border: 2px solid var(--gold); border-radius: 50%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; }
   .btn-fullscreen { background: #2a3a2a !important; font-size: 0.7rem !important; padding: 0.4rem 0.6rem !important; }
   @media (min-width: 801px) { .btn-fullscreen { display: none; } }
-  .game-panel.fullscreen { position: fixed !important; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; background: #0a0510; display: flex; flex-direction: column; }
-  .game-panel.fullscreen .game-wrap { flex: 1; display: flex; flex-direction: column; width: 100%; }
-  .game-panel.fullscreen .canvas-wrap { flex: 1; display: flex; align-items: center; justify-content: center; }
-  .game-panel.fullscreen canvas { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
-  .game-panel.fullscreen .leaderboard, .game-panel.fullscreen .instructions { display: none; }
+
+  /* FULLSCREEN MODE - landscape layout with controls on sides */
+  .game-panel.fullscreen { position: fixed !important; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; background: #0a0510; display: flex; flex-direction: column; overflow: hidden; }
+  .game-panel.fullscreen .game-wrap { flex: 1; display: flex; flex-direction: row; width: 100%; height: 100%; align-items: center; justify-content: center; }
+  .game-panel.fullscreen .score-bar { position: absolute; top: 5px; left: 50%; transform: translateX(-50%); z-index: 10; background: rgba(0,0,0,0.7); padding: 3px 15px; border-radius: 5px; }
+  .game-panel.fullscreen .canvas-wrap { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; max-height: 100%; max-width: 60%; }
+  .game-panel.fullscreen canvas { max-width: 100%; max-height: 85vh; width: auto; height: auto; object-fit: contain; }
+  .game-panel.fullscreen .leaderboard, .game-panel.fullscreen .instructions, .game-panel.fullscreen .difficulty-select { display: none; }
+  .game-panel.fullscreen .game-controls { position: absolute; top: 5px; right: 10px; z-index: 10; display: flex; gap: 8px; }
+  .game-panel.fullscreen .game-controls .btn-game { display: inline-block !important; padding: 0.4rem 0.7rem !important; font-size: 0.8rem !important; }
+  .game-panel.fullscreen .btn-fullscreen {
+    background: #aa3333 !important;
+  }
+  .game-panel.fullscreen .btn-fullscreen::before { content: 'EXIT '; }
+
+  /* Fullscreen mobile controls - positioned on left and right sides */
+  .game-panel.fullscreen .mobile-controls {
+    display: flex !important;
+    position: absolute;
+    bottom: 0; top: 0;
+    left: 0; right: 0;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0;
+    pointer-events: none;
+  }
+  .game-panel.fullscreen .mobile-controls > * { pointer-events: auto; }
+  .game-panel.fullscreen .mobile-left {
+    position: absolute;
+    left: 15px;
+    bottom: 50%;
+    transform: translateY(50%);
+  }
+  .game-panel.fullscreen .mobile-right {
+    position: absolute;
+    right: 15px;
+    bottom: 50%;
+    transform: translateY(50%);
+  }
+
+  /* Make buttons bigger in fullscreen for easier thumb access */
+  .game-panel.fullscreen .mobile-btn { width: 55px; height: 55px; font-size: 1.5rem; }
+  .game-panel.fullscreen .mobile-fire { width: 85px; height: 85px; font-size: 1.2rem; }
+  .game-panel.fullscreen .mobile-action { width: 90px; height: 70px; font-size: 1.1rem; }
+  .game-panel.fullscreen .mobile-boost { width: 90px; height: 90px; }
+  .game-panel.fullscreen .mobile-joystick { width: 140px; height: 140px; }
+  .game-panel.fullscreen .joystick-knob { width: 60px; height: 60px; }
   .leaderboard { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem 1rem; margin-top: 0.5rem; min-width: 200px; }
   .leaderboard h4 { color: var(--gold); text-align: center; font-size: 0.85rem; margin-bottom: 0.4rem; border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; }
   .leaderboard ol { list-style: none; padding: 0; margin: 0; }
@@ -99,8 +142,12 @@
     </div>
     <div class="game-controls"><button class="btn-game" onclick="runnerStart()">Start</button><button class="btn-game btn-fullscreen" onclick="toggleFullscreen('runner')">Fullscreen</button></div>
     <div class="mobile-controls" id="runner-mobile">
-      <div class="mobile-btn mobile-action" id="runner-duck">DUCK</div>
-      <div class="mobile-btn mobile-action" id="runner-jump">JUMP</div>
+      <div class="mobile-left">
+        <div class="mobile-btn mobile-action" id="runner-duck">DUCK</div>
+      </div>
+      <div class="mobile-right">
+        <div class="mobile-btn mobile-action" id="runner-jump">JUMP</div>
+      </div>
     </div>
     <div class="instructions"><strong>SPACE/UP</strong> jump | <strong>DOWN</strong> duck | Watch for falling reapers!</div>
     <div class="leaderboard"><h4>TOP 5</h4><ol id="lb-runner"></ol></div>
@@ -120,7 +167,10 @@
     </div>
     <div class="game-controls"><button class="btn-game" onclick="snakeStart()">Start</button><button class="btn-game btn-fullscreen" onclick="toggleFullscreen('snake')">Fullscreen</button></div>
     <div class="mobile-controls" id="snake-mobile">
-      <div class="mobile-dpad"><div class="mobile-dpad-row"><div class="mobile-btn" id="snake-up">^</div></div><div class="mobile-dpad-row"><div class="mobile-btn" id="snake-left"><</div><div class="mobile-btn" id="snake-down">v</div><div class="mobile-btn" id="snake-right">></div></div></div>
+      <div class="mobile-left">
+        <div class="mobile-dpad"><div class="mobile-dpad-row"><div class="mobile-btn" id="snake-up">^</div></div><div class="mobile-dpad-row"><div class="mobile-btn" id="snake-left"><</div><div class="mobile-btn" id="snake-down">v</div><div class="mobile-btn" id="snake-right">></div></div></div>
+      </div>
+      <div class="mobile-right"></div>
     </div>
     <div class="instructions"><strong>Arrow Keys/WASD</strong> steer | Eat bones!</div>
     <div class="leaderboard"><h4>TOP 5</h4><ol id="lb-snake"></ol></div>
@@ -150,8 +200,12 @@
     </div>
     <div class="game-controls"><button class="btn-game" onclick="slitherStart()">Start</button><button class="btn-game btn-fullscreen" onclick="toggleFullscreen('slither')">Fullscreen</button></div>
     <div class="mobile-controls" id="slither-mobile">
-      <div class="mobile-joystick" id="slither-joystick"><div class="joystick-knob" id="slither-knob"></div></div>
-      <div class="mobile-btn mobile-boost" id="slither-boost">BOOST</div>
+      <div class="mobile-left">
+        <div class="mobile-joystick" id="slither-joystick"><div class="joystick-knob" id="slither-knob"></div></div>
+      </div>
+      <div class="mobile-right">
+        <div class="mobile-btn mobile-boost" id="slither-boost">BOOST</div>
+      </div>
     </div>
     <div class="instructions"><strong>Mouse</strong> steer | <strong>Click</strong> boost | 25 skull snakes!</div>
     <div class="leaderboard">
@@ -176,8 +230,12 @@
       <div class="game-over-msg" id="shooter-over"><h2>Game Over!</h2><p id="shooter-final"></p><p class="funny" id="shooter-funny"></p></div>
     </div>
     <div class="mobile-controls" id="shooter-mobile">
-      <div class="mobile-dpad"><div class="mobile-dpad-row"><div class="mobile-btn" id="mob-up">^</div></div><div class="mobile-dpad-row"><div class="mobile-btn" id="mob-left"><</div><div class="mobile-btn" id="mob-down">v</div><div class="mobile-btn" id="mob-right">></div></div></div>
-      <div class="mobile-btn mobile-fire" id="mob-fire">FIRE</div>
+      <div class="mobile-left">
+        <div class="mobile-dpad"><div class="mobile-dpad-row"><div class="mobile-btn" id="mob-up">^</div></div><div class="mobile-dpad-row"><div class="mobile-btn" id="mob-left"><</div><div class="mobile-btn" id="mob-down">v</div><div class="mobile-btn" id="mob-right">></div></div></div>
+      </div>
+      <div class="mobile-right">
+        <div class="mobile-btn mobile-fire" id="mob-fire">FIRE</div>
+      </div>
     </div>
     <div class="game-controls"><button class="btn-game" onclick="shooterStart()">Start</button><button class="btn-game btn-fullscreen" onclick="toggleFullscreen('shooter')">Fullscreen</button></div>
     <div class="instructions"><strong>Arrows</strong> move | <strong>SPACE</strong> shoot | All ships are skulls!</div>
@@ -198,8 +256,12 @@
       <div class="game-over-msg" id="centi-over"><h2>Devoured!</h2><p id="centi-final"></p><p class="funny" id="centi-funny"></p></div>
     </div>
     <div class="mobile-controls" id="centi-mobile">
-      <div class="mobile-dpad"><div class="mobile-dpad-row"><div class="mobile-btn" id="centi-up">^</div></div><div class="mobile-dpad-row"><div class="mobile-btn" id="centi-left"><</div><div class="mobile-btn" id="centi-down">v</div><div class="mobile-btn" id="centi-right">></div></div></div>
-      <div class="mobile-btn mobile-fire" id="centi-fire">FIRE</div>
+      <div class="mobile-left">
+        <div class="mobile-dpad"><div class="mobile-dpad-row"><div class="mobile-btn" id="centi-up">^</div></div><div class="mobile-dpad-row"><div class="mobile-btn" id="centi-left"><</div><div class="mobile-btn" id="centi-down">v</div><div class="mobile-btn" id="centi-right">></div></div></div>
+      </div>
+      <div class="mobile-right">
+        <div class="mobile-btn mobile-fire" id="centi-fire">FIRE</div>
+      </div>
     </div>
     <div class="game-controls"><button class="btn-game" onclick="centiStart()">Start</button><button class="btn-game btn-fullscreen" onclick="toggleFullscreen('centipede')">Fullscreen</button></div>
     <div class="instructions"><strong>Arrows</strong> move | <strong>SPACE</strong> shoot | Skull centipede reverses at bottom!</div>
