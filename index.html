@@ -62,7 +62,7 @@
   .game-panel.fullscreen .game-wrap { flex: 1; display: flex; flex-direction: row; width: 100%; height: 100%; align-items: center; justify-content: center; position: relative; }
   .game-panel.fullscreen .score-bar { position: absolute; top: 2px; left: 50%; transform: translateX(-50%); z-index: 10; background: rgba(0,0,0,0.85); padding: 2px 10px; border-radius: 4px; font-size: 0.75rem; }
   .game-panel.fullscreen .canvas-wrap { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; }
-  .game-panel.fullscreen canvas { width: 100% !important; height: 100% !important; max-width: 100%; max-height: 100%; object-fit: contain; }
+  .game-panel.fullscreen canvas { width: 100% !important; height: calc(100% - 15px) !important; max-width: 100%; max-height: calc(100vh - 15px - env(safe-area-inset-bottom, 0px)); object-fit: contain; }
   .game-panel.fullscreen .leaderboard, .game-panel.fullscreen .instructions, .game-panel.fullscreen .difficulty-select { display: none; }
   .game-panel.fullscreen .game-controls { position: absolute; top: 2px; right: 5px; z-index: 100; display: flex; gap: 4px; }
   .game-panel.fullscreen .game-controls .btn-game { display: inline-block !important; padding: 0.25rem 0.4rem !important; font-size: 0.6rem !important; }
@@ -84,13 +84,15 @@
   .game-panel.fullscreen .mobile-controls > * { pointer-events: auto; }
   .game-panel.fullscreen .mobile-left {
     position: absolute;
-    left: 5px;
-    bottom: 5px;
+    left: 10px;
+    bottom: 30px;
+    bottom: calc(30px + env(safe-area-inset-bottom, 0px));
   }
   .game-panel.fullscreen .mobile-right {
     position: absolute;
-    right: 5px;
-    bottom: 5px;
+    right: 10px;
+    bottom: 30px;
+    bottom: calc(30px + env(safe-area-inset-bottom, 0px));
   }
 
   /* Fullscreen button sizes */
