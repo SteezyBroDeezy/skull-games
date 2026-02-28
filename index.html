@@ -365,15 +365,22 @@ function toggleFullscreen(game) {
     // Remove rotate hint if exists
     const hint = panel.querySelector('.rotate-hint');
     if (hint) hint.remove();
-    // Remove resize listener
+    // Remove listeners
     window.removeEventListener('resize', fullscreenResizeHandler);
+    window.removeEventListener('orientationchange', fullscreenOrientationHandler);
+    // Clear inline style
+    panel.style.height = '';
+    panel.style.width = '';
   } else {
     panel.classList.add('fullscreen');
     if (panel.requestFullscreen) panel.requestFullscreen();
     // Lock to landscape on mobile
     screen.orientation?.lock?.('landscape').catch(() => {});
-    // Add resize listener to handle browser menu show/hide
+    // Add listeners to handle browser menu show/hide and rotation
     window.addEventListener('resize', fullscreenResizeHandler);
+    window.addEventListener('orientationchange', fullscreenOrientationHandler);
+    // Initial size set
+    fullscreenResizeHandler();
     // Show rotate phone hint
     if (window.innerHeight > window.innerWidth) {
       const hint = document.createElement('div');
@@ -389,8 +396,24 @@ function toggleFullscreen(game) {
 function fullscreenResizeHandler() {
   const panel = document.querySelector('.game-panel.fullscreen');
   if (panel) {
-    // Force a re-layout by toggling a class
     panel.style.height = window.innerHeight + 'px';
+    panel.style.width = window.innerWidth + 'px';
+  }
+}
+// Handler for orientation change - delay to let browser settle, then fix layout
+function fullscreenOrientationHandler() {
+  const panel = document.querySelector('.game-panel.fullscreen');
+  if (panel) {
+    // Multiple delayed updates to catch browser UI changes
+    setTimeout(fullscreenResizeHandler, 100);
+    setTimeout(fullscreenResizeHandler, 300);
+    setTimeout(fullscreenResizeHandler, 500);
+    // Try to re-request fullscreen after rotation
+    setTimeout(() => {
+      if (panel.requestFullscreen && !document.fullscreenElement) {
+        panel.requestFullscreen().catch(() => {});
+      }
+    }, 600);
   }
 }
 function lsGet(k, def) { try { return JSON.parse(localStorage.getItem(k)) ?? def; } catch { return def; } }
