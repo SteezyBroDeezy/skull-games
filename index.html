@@ -53,55 +53,85 @@
   .mobile-boost { width: 80px; height: 80px; border-radius: 50%; font-size: 1rem; font-weight: bold; background: linear-gradient(135deg, #226622, #44aa44); border-color: #44ff44; }
   .mobile-joystick { width: 120px; height: 120px; background: rgba(30,20,40,0.9); border: 3px solid var(--gold); border-radius: 50%; position: relative; touch-action: none; }
   .joystick-knob { width: 50px; height: 50px; background: linear-gradient(135deg, #555, #888); border: 2px solid var(--gold); border-radius: 50%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; }
-  .btn-fullscreen { background: #2a3a2a !important; font-size: 0.7rem !important; padding: 0.4rem 0.6rem !important; }
+  .btn-fullscreen { background: #2a3a2a !important; font-size: 0.65rem !important; padding: 0.4rem 0.5rem !important; }
+  .btn-fullscreen::after { content: ' ↻'; }
   @media (min-width: 801px) { .btn-fullscreen { display: none; } }
 
-  /* FULLSCREEN MODE - landscape layout with controls on sides */
+  /* FULLSCREEN MODE - landscape layout, game as wide as possible */
   .game-panel.fullscreen { position: fixed !important; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; background: #0a0510; display: flex; flex-direction: column; overflow: hidden; }
-  .game-panel.fullscreen .game-wrap { flex: 1; display: flex; flex-direction: row; width: 100%; height: 100%; align-items: center; justify-content: center; }
-  .game-panel.fullscreen .score-bar { position: absolute; top: 5px; left: 50%; transform: translateX(-50%); z-index: 10; background: rgba(0,0,0,0.7); padding: 3px 15px; border-radius: 5px; }
-  .game-panel.fullscreen .canvas-wrap { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; max-height: 100%; max-width: 60%; }
-  .game-panel.fullscreen canvas { max-width: 100%; max-height: 85vh; width: auto; height: auto; object-fit: contain; }
+  .game-panel.fullscreen .game-wrap { flex: 1; display: flex; flex-direction: row; width: 100%; height: 100%; align-items: center; justify-content: center; position: relative; }
+  .game-panel.fullscreen .score-bar { position: absolute; top: 2px; left: 50%; transform: translateX(-50%); z-index: 10; background: rgba(0,0,0,0.85); padding: 2px 10px; border-radius: 4px; font-size: 0.75rem; }
+  .game-panel.fullscreen .canvas-wrap { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; }
+  .game-panel.fullscreen canvas { width: 100% !important; height: 100% !important; max-width: 100%; max-height: 100%; object-fit: contain; }
   .game-panel.fullscreen .leaderboard, .game-panel.fullscreen .instructions, .game-panel.fullscreen .difficulty-select { display: none; }
-  .game-panel.fullscreen .game-controls { position: absolute; top: 5px; right: 10px; z-index: 10; display: flex; gap: 8px; }
-  .game-panel.fullscreen .game-controls .btn-game { display: inline-block !important; padding: 0.4rem 0.7rem !important; font-size: 0.8rem !important; }
-  .game-panel.fullscreen .btn-fullscreen {
-    background: #aa3333 !important;
-  }
-  .game-panel.fullscreen .btn-fullscreen::before { content: 'EXIT '; }
+  .game-panel.fullscreen .game-controls { position: absolute; top: 2px; right: 5px; z-index: 100; display: flex; gap: 4px; }
+  .game-panel.fullscreen .game-controls .btn-game { display: inline-block !important; padding: 0.25rem 0.4rem !important; font-size: 0.6rem !important; }
+  .game-panel.fullscreen .btn-fullscreen { background: #aa3333 !important; }
+  .game-panel.fullscreen .btn-fullscreen::before { content: 'X '; }
 
-  /* Fullscreen mobile controls - positioned on left and right sides */
+  /* Fullscreen mobile controls - positioned at very bottom corners */
   .game-panel.fullscreen .mobile-controls {
     display: flex !important;
     position: absolute;
     bottom: 0; top: 0;
     left: 0; right: 0;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-end;
     padding: 0;
     pointer-events: none;
+    z-index: 50;
   }
   .game-panel.fullscreen .mobile-controls > * { pointer-events: auto; }
   .game-panel.fullscreen .mobile-left {
     position: absolute;
-    left: 15px;
-    bottom: 50%;
-    transform: translateY(50%);
+    left: 5px;
+    bottom: 5px;
   }
   .game-panel.fullscreen .mobile-right {
     position: absolute;
-    right: 15px;
-    bottom: 50%;
-    transform: translateY(50%);
+    right: 5px;
+    bottom: 5px;
   }
 
-  /* Make buttons bigger in fullscreen for easier thumb access */
-  .game-panel.fullscreen .mobile-btn { width: 55px; height: 55px; font-size: 1.5rem; }
-  .game-panel.fullscreen .mobile-fire { width: 85px; height: 85px; font-size: 1.2rem; }
-  .game-panel.fullscreen .mobile-action { width: 90px; height: 70px; font-size: 1.1rem; }
-  .game-panel.fullscreen .mobile-boost { width: 90px; height: 90px; }
-  .game-panel.fullscreen .mobile-joystick { width: 140px; height: 140px; }
-  .game-panel.fullscreen .joystick-knob { width: 60px; height: 60px; }
+  /* Fullscreen button sizes */
+  .game-panel.fullscreen .mobile-btn { width: 46px; height: 46px; font-size: 1.2rem; opacity: 0.85; }
+  .game-panel.fullscreen .mobile-fire { width: 70px; height: 70px; font-size: 0.9rem; opacity: 0.85; }
+  .game-panel.fullscreen .mobile-action { width: 75px; height: 55px; font-size: 0.9rem; opacity: 0.85; }
+  .game-panel.fullscreen .mobile-boost { width: 75px; height: 75px; opacity: 0.85; }
+  .game-panel.fullscreen .mobile-joystick { width: 110px; height: 110px; opacity: 0.85; }
+  .game-panel.fullscreen .joystick-knob { width: 45px; height: 45px; }
+  .game-panel.fullscreen .mobile-dpad { opacity: 0.85; }
+
+  /* Castle specific fullscreen - buttons on right side vertically */
+  #panel-castle.fullscreen .game-controls {
+    position: absolute;
+    top: 50%;
+    right: 2px;
+    transform: translateY(-50%);
+    flex-direction: column;
+    gap: 5px;
+  }
+  #panel-castle.fullscreen .game-controls .btn-game { padding: 0.35rem 0.25rem !important; font-size: 0.55rem !important; }
+
+  /* Rotate phone hint */
+  .rotate-hint {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.9);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    color: var(--gold);
+    font-size: 1.2rem;
+    text-align: center;
+    padding: 20px;
+    transition: opacity 1s;
+  }
+  .rotate-hint.fade-out { opacity: 0; }
+  .rotate-hint .rotate-icon { font-size: 4rem; margin-bottom: 15px; animation: rotate-wobble 1s infinite; }
+  @keyframes rotate-wobble { 0%, 100% { transform: rotate(-10deg); } 50% { transform: rotate(10deg); } }
   .leaderboard { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem 1rem; margin-top: 0.5rem; min-width: 200px; }
   .leaderboard h4 { color: var(--gold); text-align: center; font-size: 0.85rem; margin-bottom: 0.4rem; border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; }
   .leaderboard ol { list-style: none; padding: 0; margin: 0; }
@@ -313,11 +343,23 @@ function toggleFullscreen(game) {
     panel.classList.remove('fullscreen');
     if (document.exitFullscreen) document.exitFullscreen();
     screen.orientation?.unlock?.();
+    // Remove rotate hint if exists
+    const hint = panel.querySelector('.rotate-hint');
+    if (hint) hint.remove();
   } else {
     panel.classList.add('fullscreen');
     if (panel.requestFullscreen) panel.requestFullscreen();
     // Lock to landscape on mobile
     screen.orientation?.lock?.('landscape').catch(() => {});
+    // Show rotate phone hint
+    if (window.innerHeight > window.innerWidth) {
+      const hint = document.createElement('div');
+      hint.className = 'rotate-hint';
+      hint.innerHTML = '<div class="rotate-icon">📱↻</div><div>Rotate phone sideways for best experience!</div>';
+      panel.appendChild(hint);
+      setTimeout(() => hint.classList.add('fade-out'), 2500);
+      setTimeout(() => hint.remove(), 3500);
+    }
   }
 }
 function lsGet(k, def) { try { return JSON.parse(localStorage.getItem(k)) ?? def; } catch { return def; } }
@@ -484,22 +526,22 @@ function drawSkull(ctx, x, y, size, color) {
     obstacles.forEach(o => o.x -= speed);
     obstacles = obstacles.filter(o => o.x > -60);
 
-    // Spawn flying objects - IN THE MIDDLE between ground obstacles
+    // Spawn flying objects - must have BIG clear zone from ground obstacles
     const lastFall = fallingThings[fallingThings.length - 1];
 
-    // Find obstacles ahead and behind spawn point to ensure flyer is IN THE MIDDLE
-    const obsAhead = obstacles.find(o => o.x > W - 150 && o.x < W + 150); // Near spawn
-    const obsBehind = obstacles.find(o => o.x > W - 450 && o.x < W - 200); // Further back
+    // Check for obstacles in a WIDE zone - need clearance before AND after for player to react
+    const obsNearSpawn = obstacles.find(o => o.x > W - 350 && o.x < W + 100);
+    const recentObs = obstacles.find(o => o.x > W - 250); // Recently spawned obstacle
 
-    // Only spawn if there's clear space - no obstacles too close to spawn point
-    const clearZone = !obsAhead;
+    // Only spawn if there's clear space - BIG buffer zone from obstacles
+    const clearZone = !obsNearSpawn && !recentObs;
 
     // Safe spacing from other flyers - increased for fewer flyers
-    const flyerSpacing = Math.max(280, 350 - score * 0.08);
+    const flyerSpacing = Math.max(350, 420 - score * 0.06);
     const safeFromFlying = !lastFall || lastFall.x < W - flyerSpacing;
 
     // Flyer spawn rate - REDUCED for fewer flyers
-    const flyerSpawnRate = 0.008 + score * 0.00006;
+    const flyerSpawnRate = 0.006 + score * 0.00004;
     if (safeFromFlying && clearZone && Math.random() < flyerSpawnRate) {
       // Decide flyer type
       const flyerRoll = Math.random();
@@ -1884,7 +1926,17 @@ function drawSkull(ctx, x, y, size, color) {
       }
     });
 
-    bullets.forEach(b => { b.x += (b.vx || 0); b.y += b.vy; if (b.life !== undefined) b.life--; });
+    bullets.forEach(b => {
+      // Tractor beam follows the capturer enemy
+      if (b.owner === 'tractorBeam' && b.source) {
+        b.x = b.source.x + b.source.w/2 - b.w/2;
+        b.y = b.source.y + b.source.h;
+      } else {
+        b.x += (b.vx || 0);
+        b.y += b.vy;
+      }
+      if (b.life !== undefined) b.life--;
+    });
     bullets = bullets.filter(b => b.y > -25 && b.y < H + 40 && b.x > -25 && b.x < W + 25 && (b.life === undefined || b.life > 0));
 
     bullets = bullets.filter(b => {
