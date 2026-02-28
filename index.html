@@ -64,8 +64,8 @@
   .game-panel.fullscreen .canvas-wrap { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; }
   .game-panel.fullscreen canvas { width: 100% !important; height: calc(100% - 15px) !important; max-width: 100%; max-height: calc(100vh - 15px - env(safe-area-inset-bottom, 0px)); object-fit: contain; }
   .game-panel.fullscreen .leaderboard, .game-panel.fullscreen .instructions, .game-panel.fullscreen .difficulty-select { display: none; }
-  .game-panel.fullscreen .game-controls { position: absolute; top: 2px; right: 5px; z-index: 100; display: flex; gap: 4px; }
-  .game-panel.fullscreen .game-controls .btn-game { display: inline-block !important; padding: 0.25rem 0.4rem !important; font-size: 0.6rem !important; }
+  .game-panel.fullscreen .game-controls { position: absolute; top: 5px; right: 10px; z-index: 100; display: flex; gap: 6px; }
+  .game-panel.fullscreen .game-controls .btn-game { display: inline-block !important; padding: 0.5rem 0.8rem !important; font-size: 0.85rem !important; min-width: 70px; }
   .game-panel.fullscreen .btn-fullscreen { background: #aa3333 !important; }
   .game-panel.fullscreen .btn-fullscreen::before { content: 'X '; }
 
@@ -115,21 +115,36 @@
   }
   #panel-castle.fullscreen .game-controls .btn-game { padding: 0.35rem 0.25rem !important; font-size: 0.55rem !important; }
 
-  /* Runner specific fullscreen - bigger buttons more towards middle */
+  /* Runner specific fullscreen - smaller buttons at bottom corners */
   #panel-runner.fullscreen .mobile-left {
-    left: 15%;
-    bottom: 35px;
-    bottom: calc(35px + env(safe-area-inset-bottom, 0px));
+    left: 10px;
+    bottom: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
   }
   #panel-runner.fullscreen .mobile-right {
-    right: 15%;
-    bottom: 35px;
-    bottom: calc(35px + env(safe-area-inset-bottom, 0px));
+    right: 10px;
+    bottom: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
   }
   #panel-runner.fullscreen .mobile-action {
-    width: 100px !important;
-    height: 70px !important;
-    font-size: 1.1rem !important;
+    width: 65px !important;
+    height: 45px !important;
+    font-size: 0.8rem !important;
+    opacity: 0.7 !important;
+  }
+
+  /* Snake specific fullscreen - controls outside game area */
+  #panel-snake.fullscreen .canvas-wrap {
+    margin-left: 140px;
+    width: calc(100% - 140px) !important;
+  }
+  #panel-snake.fullscreen .mobile-left {
+    left: 10px;
+    bottom: 50%;
+    transform: translateY(50%);
+  }
+  #panel-snake.fullscreen .mobile-dpad {
+    transform: scale(1.1);
   }
 
   /* Rotate phone hint */
