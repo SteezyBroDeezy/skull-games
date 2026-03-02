@@ -57,12 +57,12 @@
   .btn-fullscreen::after { content: ' ↻'; }
   @media (min-width: 801px) { .btn-fullscreen { display: none; } }
 
-  /* FULLSCREEN MODE - landscape layout, game as wide as possible */
-  .game-panel.fullscreen { position: fixed !important; top: 0; left: 0; width: 100vw; height: 100vh; height: 100dvh; z-index: 9999; background: #0a0510; display: flex; flex-direction: column; overflow: hidden; }
+  /* FULLSCREEN MODE - landscape layout, game fills screen with no black bars */
+  .game-panel.fullscreen { position: fixed !important; top: 0; left: 0; width: 100vw; height: 100vh; height: 100dvh; z-index: 9999; background: #1a0a1a; display: flex; flex-direction: column; overflow: hidden; }
   .game-panel.fullscreen .game-wrap { flex: 1; display: flex; flex-direction: row; width: 100%; height: 100%; align-items: center; justify-content: center; position: relative; }
   .game-panel.fullscreen .score-bar { position: absolute; top: 2px; left: 50%; transform: translateX(-50%); z-index: 10; background: rgba(0,0,0,0.85); padding: 2px 10px; border-radius: 4px; font-size: 0.75rem; }
   .game-panel.fullscreen .canvas-wrap { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; }
-  .game-panel.fullscreen canvas { width: 100% !important; height: calc(100% - 15px) !important; max-width: 100%; max-height: calc(100vh - 15px - env(safe-area-inset-bottom, 0px)); object-fit: contain; }
+  .game-panel.fullscreen canvas { height: 100% !important; width: auto !important; max-height: 100%; border: 2px solid #d4af37; }
   .game-panel.fullscreen .leaderboard, .game-panel.fullscreen .instructions, .game-panel.fullscreen .difficulty-select { display: none; }
   .game-panel.fullscreen .game-controls { position: absolute; top: 5px; right: 10px; z-index: 100; display: flex; gap: 6px; }
   .game-panel.fullscreen .game-controls .btn-game { display: inline-block !important; padding: 0.5rem 0.8rem !important; font-size: 0.85rem !important; min-width: 70px; }
@@ -115,7 +115,13 @@
   }
   #panel-castle.fullscreen .game-controls .btn-game { padding: 0.6rem 0.5rem !important; font-size: 0.75rem !important; min-width: 65px; }
 
-  /* Runner specific fullscreen - smaller buttons at bottom corners */
+  /* Runner specific fullscreen - wide game fills width, buttons at corners */
+  #panel-runner.fullscreen canvas {
+    width: 100% !important;
+    height: auto !important;
+    max-width: 100%;
+    max-height: 100%;
+  }
   #panel-runner.fullscreen .mobile-left {
     left: 10px;
     bottom: 8px;
@@ -135,73 +141,53 @@
 
   /* Snake specific fullscreen - square game, controls outside */
   #panel-snake.fullscreen .canvas-wrap {
-    margin-left: 130px;
-    width: calc(100% - 130px) !important;
-    height: 100%;
-  }
-  #panel-snake.fullscreen canvas {
-    height: 100% !important;
-    width: auto !important;
-    max-height: 100%;
-    aspect-ratio: 1 / 1;
-    border: 2px solid #d4af37;
+    margin-left: 120px;
+    width: calc(100% - 120px) !important;
   }
   #panel-snake.fullscreen .mobile-left {
-    left: 10px;
+    left: 5px;
     bottom: 50%;
     transform: translateY(50%);
   }
-  #panel-snake.fullscreen .mobile-dpad {
-    transform: scale(1.1);
-  }
+  #panel-snake.fullscreen .mobile-dpad { transform: scale(1.0); }
 
-  /* Slither specific fullscreen - show game border */
-  #panel-slither.fullscreen canvas {
-    border: 2px solid #d4af37;
-    max-width: calc(100% - 20px);
-  }
+  /* Slither specific fullscreen - controls outside */
   #panel-slither.fullscreen .canvas-wrap {
-    margin-left: 130px;
-    width: calc(100% - 130px) !important;
+    margin-left: 120px;
+    width: calc(100% - 120px) !important;
   }
   #panel-slither.fullscreen .mobile-left {
-    left: 10px;
+    left: 5px;
     bottom: 50%;
     transform: translateY(50%);
   }
 
-  /* Centipede specific fullscreen - show game border */
-  #panel-centi.fullscreen canvas {
-    border: 2px solid #d4af37;
-    max-width: calc(100% - 20px);
-  }
+  /* Centipede specific fullscreen - controls outside */
   #panel-centi.fullscreen .canvas-wrap {
-    margin-left: 130px;
-    width: calc(100% - 130px) !important;
+    margin-left: 120px;
+    width: calc(100% - 120px) !important;
   }
   #panel-centi.fullscreen .mobile-left {
-    left: 10px;
+    left: 5px;
     bottom: 50%;
     transform: translateY(50%);
   }
 
-  /* Castle specific fullscreen - show game border */
-  #panel-castle.fullscreen canvas {
-    border: 2px solid #d4af37;
-  }
-
-  /* Shooter specific fullscreen - show game border */
-  #panel-shooter.fullscreen canvas {
-    border: 2px solid #d4af37;
-  }
+  /* Shooter specific fullscreen - controls outside */
   #panel-shooter.fullscreen .canvas-wrap {
-    margin-left: 130px;
-    width: calc(100% - 130px) !important;
+    margin-left: 120px;
+    width: calc(100% - 120px) !important;
   }
   #panel-shooter.fullscreen .mobile-left {
-    left: 10px;
+    left: 5px;
     bottom: 50%;
     transform: translateY(50%);
+  }
+
+  /* Castle specific fullscreen - buttons on right, no side margin for controls */
+  #panel-castle.fullscreen .canvas-wrap {
+    margin-right: 75px;
+    width: calc(100% - 75px) !important;
   }
 
   /* Rotate phone hint */
@@ -433,6 +419,7 @@ function toggleFullscreen(game) {
   if (panel.classList.contains('fullscreen')) {
     panel.classList.remove('fullscreen');
     if (document.exitFullscreen) document.exitFullscreen();
+    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
     screen.orientation?.unlock?.();
     // Remove rotate hint if exists
     const hint = panel.querySelector('.rotate-hint');
@@ -445,14 +432,20 @@ function toggleFullscreen(game) {
     panel.style.width = '';
   } else {
     panel.classList.add('fullscreen');
-    if (panel.requestFullscreen) panel.requestFullscreen();
+    // Request fullscreen with webkit fallback
+    if (panel.requestFullscreen) panel.requestFullscreen().catch(() => {});
+    else if (panel.webkitRequestFullscreen) panel.webkitRequestFullscreen();
     // Lock to landscape on mobile
     screen.orientation?.lock?.('landscape').catch(() => {});
     // Add listeners to handle browser menu show/hide and rotation
     window.addEventListener('resize', fullscreenResizeHandler);
     window.addEventListener('orientationchange', fullscreenOrientationHandler);
-    // Initial size set
+    // Scroll to hide address bar
+    window.scrollTo(0, 1);
+    // Initial size set with multiple attempts
     fullscreenResizeHandler();
+    setTimeout(fullscreenResizeHandler, 100);
+    setTimeout(fullscreenResizeHandler, 300);
     // Show rotate phone hint
     if (window.innerHeight > window.innerWidth) {
       const hint = document.createElement('div');
@@ -470,22 +463,40 @@ function fullscreenResizeHandler() {
   if (panel) {
     panel.style.height = window.innerHeight + 'px';
     panel.style.width = window.innerWidth + 'px';
+    // Try to scroll away the address bar
+    window.scrollTo(0, 1);
   }
 }
-// Handler for orientation change - delay to let browser settle, then fix layout
+// Handler for orientation change - aggressively fix layout and request fullscreen
 function fullscreenOrientationHandler() {
   const panel = document.querySelector('.game-panel.fullscreen');
   if (panel) {
+    // Scroll to hide address bar
+    window.scrollTo(0, 1);
+    document.body.scrollTop = 0;
+
     // Multiple delayed updates to catch browser UI changes
-    setTimeout(fullscreenResizeHandler, 100);
-    setTimeout(fullscreenResizeHandler, 300);
-    setTimeout(fullscreenResizeHandler, 500);
-    // Try to re-request fullscreen after rotation
-    setTimeout(() => {
+    const updateLayout = () => {
+      fullscreenResizeHandler();
+      window.scrollTo(0, 1);
+    };
+    setTimeout(updateLayout, 50);
+    setTimeout(updateLayout, 150);
+    setTimeout(updateLayout, 300);
+    setTimeout(updateLayout, 500);
+    setTimeout(updateLayout, 800);
+
+    // Try to re-request fullscreen after rotation - multiple attempts
+    const tryFullscreen = () => {
       if (panel.requestFullscreen && !document.fullscreenElement) {
         panel.requestFullscreen().catch(() => {});
+      } else if (panel.webkitRequestFullscreen && !document.webkitFullscreenElement) {
+        panel.webkitRequestFullscreen();
       }
-    }, 600);
+    };
+    setTimeout(tryFullscreen, 100);
+    setTimeout(tryFullscreen, 400);
+    setTimeout(tryFullscreen, 700);
   }
 }
 function lsGet(k, def) { try { return JSON.parse(localStorage.getItem(k)) ?? def; } catch { return def; } }
