@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Skull Games Arcade</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Pirata+One&display=swap');
@@ -216,6 +219,34 @@
   .leaderboard li:last-child { border-bottom: none; }
   .leaderboard .lb-name { color: var(--bone); }
   .leaderboard .lb-score { color: var(--gold); font-weight: 700; }
+
+  /* Native fullscreen API styling - helps hide browser UI */
+  :fullscreen { background: #1a0a1a; }
+  :-webkit-full-screen { background: #1a0a1a; }
+  :-moz-full-screen { background: #1a0a1a; }
+  :-ms-fullscreen { background: #1a0a1a; }
+
+  /* When in native fullscreen, hide everything except the active game panel */
+  :fullscreen .arcade-header,
+  :fullscreen .nickname-bar,
+  :fullscreen .game-selector,
+  :fullscreen .game-panel:not(.fullscreen) {
+    display: none !important;
+  }
+  :-webkit-full-screen .arcade-header,
+  :-webkit-full-screen .nickname-bar,
+  :-webkit-full-screen .game-selector,
+  :-webkit-full-screen .game-panel:not(.fullscreen) {
+    display: none !important;
+  }
+
+  /* Ensure html/body fill screen in fullscreen */
+  :fullscreen html, :fullscreen body,
+  :-webkit-full-screen html, :-webkit-full-screen body {
+    width: 100% !important;
+    height: 100% !important;
+    overflow: hidden !important;
+  }
 </style>
 </head>
 <body>
@@ -418,8 +449,10 @@ function toggleFullscreen(game) {
   const panel = document.getElementById('panel-' + game);
   if (panel.classList.contains('fullscreen')) {
     panel.classList.remove('fullscreen');
-    if (document.exitFullscreen) document.exitFullscreen();
+    // Exit fullscreen from document level
+    if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
     else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    else if (document.msExitFullscreen) document.msExitFullscreen();
     screen.orientation?.unlock?.();
     // Remove rotate hint if exists
     const hint = panel.querySelector('.rotate-hint');
@@ -427,25 +460,65 @@ function toggleFullscreen(game) {
     // Remove listeners
     window.removeEventListener('resize', fullscreenResizeHandler);
     window.removeEventListener('orientationchange', fullscreenOrientationHandler);
+    document.removeEventListener('fullscreenchange', fullscreenChangeHandler);
+    document.removeEventListener('webkitfullscreenchange', fullscreenChangeHandler);
     // Clear inline style
     panel.style.height = '';
     panel.style.width = '';
   } else {
     panel.classList.add('fullscreen');
-    // Request fullscreen with webkit fallback
-    if (panel.requestFullscreen) panel.requestFullscreen().catch(() => {});
-    else if (panel.webkitRequestFullscreen) panel.webkitRequestFullscreen();
+
+    // Use document.documentElement for more reliable mobile fullscreen
+    const fsElement = document.documentElement;
+    const fsOptions = { navigationUI: 'hide' };
+
+    // Request fullscreen with navigationUI: 'hide' to force hide browser controls
+    const requestFS = () => {
+      if (fsElement.requestFullscreen) {
+        return fsElement.requestFullscreen(fsOptions).catch(() => {
+          // Fallback without options for older browsers
+          return fsElement.requestFullscreen().catch(() => {});
+        });
+      } else if (fsElement.webkitRequestFullscreen) {
+        fsElement.webkitRequestFullscreen();
+        return Promise.resolve();
+      } else if (fsElement.msRequestFullscreen) {
+        fsElement.msRequestFullscreen();
+        return Promise.resolve();
+      }
+      return Promise.resolve();
+    };
+
+    // Initial fullscreen request
+    requestFS().then(() => {
+      // Re-request after a delay to ensure browser UI hides
+      setTimeout(() => {
+        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+          requestFS();
+        }
+      }, 100);
+    });
+
     // Lock to landscape on mobile
     screen.orientation?.lock?.('landscape').catch(() => {});
+
     // Add listeners to handle browser menu show/hide and rotation
     window.addEventListener('resize', fullscreenResizeHandler);
     window.addEventListener('orientationchange', fullscreenOrientationHandler);
-    // Scroll to hide address bar
+    document.addEventListener('fullscreenchange', fullscreenChangeHandler);
+    document.addEventListener('webkitfullscreenchange', fullscreenChangeHandler);
+
+    // Scroll to hide address bar (fallback for browsers that don't support full fullscreen)
     window.scrollTo(0, 1);
+    document.body.scrollTop = 0;
+    document.documentElement.scrollTop = 0;
+
     // Initial size set with multiple attempts
     fullscreenResizeHandler();
     setTimeout(fullscreenResizeHandler, 100);
     setTimeout(fullscreenResizeHandler, 300);
+    setTimeout(fullscreenResizeHandler, 500);
+
     // Show rotate phone hint
     if (window.innerHeight > window.innerWidth) {
       const hint = document.createElement('div');
@@ -455,6 +528,15 @@ function toggleFullscreen(game) {
       setTimeout(() => hint.classList.add('fade-out'), 2500);
       setTimeout(() => hint.remove(), 3500);
     }
+  }
+}
+// Handle fullscreen state changes from browser
+function fullscreenChangeHandler() {
+  const panel = document.querySelector('.game-panel.fullscreen');
+  if (panel && (document.fullscreenElement || document.webkitFullscreenElement)) {
+    // Successfully entered fullscreen - force layout update
+    setTimeout(fullscreenResizeHandler, 50);
+    setTimeout(fullscreenResizeHandler, 200);
   }
 }
 // Handler to force re-layout when viewport changes (browser menu shows/hides)
@@ -474,6 +556,7 @@ function fullscreenOrientationHandler() {
     // Scroll to hide address bar
     window.scrollTo(0, 1);
     document.body.scrollTop = 0;
+    document.documentElement.scrollTop = 0;
 
     // Multiple delayed updates to catch browser UI changes
     const updateLayout = () => {
@@ -486,12 +569,18 @@ function fullscreenOrientationHandler() {
     setTimeout(updateLayout, 500);
     setTimeout(updateLayout, 800);
 
-    // Try to re-request fullscreen after rotation - multiple attempts
+    // Try to re-request fullscreen after rotation - use documentElement with navigationUI hide
+    const fsElement = document.documentElement;
+    const fsOptions = { navigationUI: 'hide' };
     const tryFullscreen = () => {
-      if (panel.requestFullscreen && !document.fullscreenElement) {
-        panel.requestFullscreen().catch(() => {});
-      } else if (panel.webkitRequestFullscreen && !document.webkitFullscreenElement) {
-        panel.webkitRequestFullscreen();
+      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        if (fsElement.requestFullscreen) {
+          fsElement.requestFullscreen(fsOptions).catch(() => {
+            fsElement.requestFullscreen().catch(() => {});
+          });
+        } else if (fsElement.webkitRequestFullscreen) {
+          fsElement.webkitRequestFullscreen();
+        }
       }
     };
     setTimeout(tryFullscreen, 100);
