@@ -6,6 +6,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#d4af37">
+<link rel="manifest" id="pwa-manifest">
+<link rel="apple-touch-icon" id="apple-icon">
 <title>Skull Games Arcade</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Pirata+One&display=swap');
@@ -5004,6 +5007,176 @@ function drawSkull(ctx, x, y, size, color) {
   ctx.fillText('Epic castle defense with upgrades & abilities!', W/2, H/2);
   ctx.fillText('Click to Start', W/2, H/2 + 30);
   ctx.textAlign = 'left';
+})();
+</script>
+
+<!-- PWA: Offline Support & Install -->
+<script>
+(function() {
+  // Generate skull icon using canvas
+  function generateIcon(size) {
+    const c = document.createElement('canvas');
+    c.width = c.height = size;
+    const ctx = c.getContext('2d');
+
+    // Background
+    ctx.fillStyle = '#1a1612';
+    ctx.fillRect(0, 0, size, size);
+
+    // Skull
+    const cx = size / 2, cy = size / 2;
+    const scale = size / 100;
+
+    // Skull shape (main head)
+    ctx.fillStyle = '#e8dcc4';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy - 5 * scale, 35 * scale, 40 * scale, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Jaw
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + 25 * scale, 25 * scale, 18 * scale, 0, 0, Math.PI);
+    ctx.fill();
+
+    // Eye sockets
+    ctx.fillStyle = '#1a1612';
+    ctx.beginPath();
+    ctx.ellipse(cx - 14 * scale, cy - 8 * scale, 10 * scale, 12 * scale, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 14 * scale, cy - 8 * scale, 10 * scale, 12 * scale, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Glowing eyes
+    ctx.fillStyle = '#d4af37';
+    ctx.shadowColor = '#d4af37';
+    ctx.shadowBlur = 8 * scale;
+    ctx.beginPath();
+    ctx.arc(cx - 14 * scale, cy - 8 * scale, 4 * scale, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx + 14 * scale, cy - 8 * scale, 4 * scale, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Nose hole
+    ctx.fillStyle = '#1a1612';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + 5 * scale);
+    ctx.lineTo(cx - 6 * scale, cy + 15 * scale);
+    ctx.lineTo(cx + 6 * scale, cy + 15 * scale);
+    ctx.closePath();
+    ctx.fill();
+
+    // Teeth
+    ctx.fillStyle = '#e8dcc4';
+    ctx.strokeStyle = '#1a1612';
+    ctx.lineWidth = 1 * scale;
+    for (let i = -3; i <= 3; i++) {
+      ctx.fillRect(cx + i * 7 * scale - 3 * scale, cy + 25 * scale, 6 * scale, 12 * scale);
+      ctx.strokeRect(cx + i * 7 * scale - 3 * scale, cy + 25 * scale, 6 * scale, 12 * scale);
+    }
+
+    // Gold border
+    ctx.strokeStyle = '#d4af37';
+    ctx.lineWidth = 4 * scale;
+    ctx.strokeRect(2 * scale, 2 * scale, size - 4 * scale, size - 4 * scale);
+
+    return c.toDataURL('image/png');
+  }
+
+  // Create icons
+  const icon192 = generateIcon(192);
+  const icon512 = generateIcon(512);
+
+  // Set apple touch icon
+  document.getElementById('apple-icon').href = icon192;
+
+  // Create and set manifest
+  const manifest = {
+    name: 'Skull Games Arcade',
+    short_name: 'Skull Games',
+    description: 'Six games of skeletal mayhem! Play offline anytime.',
+    start_url: location.pathname,
+    display: 'fullscreen',
+    orientation: 'any',
+    background_color: '#1a1612',
+    theme_color: '#d4af37',
+    icons: [
+      { src: icon192, sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
+      { src: icon512, sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
+    ]
+  };
+
+  const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+  document.getElementById('pwa-manifest').href = URL.createObjectURL(manifestBlob);
+
+  // Register service worker for offline support
+  if ('serviceWorker' in navigator) {
+    const swCode = `
+      const CACHE_NAME = 'skull-games-v1';
+      const OFFLINE_URL = '${location.pathname}';
+
+      self.addEventListener('install', event => {
+        event.waitUntil(
+          caches.open(CACHE_NAME).then(cache => {
+            return cache.addAll([OFFLINE_URL]);
+          }).then(() => self.skipWaiting())
+        );
+      });
+
+      self.addEventListener('activate', event => {
+        event.waitUntil(
+          caches.keys().then(keys => {
+            return Promise.all(
+              keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
+            );
+          }).then(() => self.clients.claim())
+        );
+      });
+
+      self.addEventListener('fetch', event => {
+        if (event.request.mode === 'navigate') {
+          event.respondWith(
+            fetch(event.request).catch(() => caches.match(OFFLINE_URL))
+          );
+        } else {
+          event.respondWith(
+            caches.match(event.request).then(response => {
+              return response || fetch(event.request).then(fetchResponse => {
+                // Cache successful responses
+                if (fetchResponse.ok) {
+                  const clone = fetchResponse.clone();
+                  caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+                }
+                return fetchResponse;
+              }).catch(() => new Response('', { status: 404 }));
+            })
+          );
+        }
+      });
+    `;
+
+    const swBlob = new Blob([swCode], { type: 'application/javascript' });
+    const swUrl = URL.createObjectURL(swBlob);
+
+    navigator.serviceWorker.register(swUrl, { scope: location.pathname.substring(0, location.pathname.lastIndexOf('/') + 1) })
+      .then(reg => {
+        console.log('Skull Games PWA ready for offline play!');
+        // Check for updates periodically
+        setInterval(() => reg.update(), 60 * 60 * 1000);
+      })
+      .catch(err => console.log('SW registration failed:', err));
+  }
+
+  // Install prompt handling
+  let deferredPrompt;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredPrompt = e;
+    // Show install button if desired
+    console.log('Skull Games can be installed! Add to home screen for offline play.');
+  });
 })();
 </script>
 </body>
