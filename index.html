@@ -5154,137 +5154,285 @@ function drawSkull(ctx, x, y, size, color) {
 
   function drawShop() {
     shopButtons = []; // Reset buttons
+
+    // Detect mobile for bigger shop items
+    const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.innerWidth < 800;
+
     ctx.fillStyle = 'rgba(0,0,0,0.95)'; ctx.fillRect(20, 15, W - 40, H - 30);
     ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 3; ctx.strokeRect(20, 15, W - 40, H - 30);
 
-    // X CLOSE BUTTON (top right) - BIGGER
+    // X CLOSE BUTTON (top right) - BIGGER on mobile
+    const closeBtnSize = isMobile ? 50 : 35;
     ctx.fillStyle = '#aa3333';
-    ctx.fillRect(W - 60, 20, 35, 28);
-    ctx.strokeStyle = '#ff4444'; ctx.lineWidth = 2; ctx.strokeRect(W - 60, 20, 35, 28);
-    ctx.fillStyle = '#fff'; ctx.font = 'bold 20px Arial'; ctx.textAlign = 'center';
-    ctx.fillText('X', W - 42, 40);
+    ctx.fillRect(W - 25 - closeBtnSize, 20, closeBtnSize, closeBtnSize * 0.8);
+    ctx.strokeStyle = '#ff4444'; ctx.lineWidth = 2; ctx.strokeRect(W - 25 - closeBtnSize, 20, closeBtnSize, closeBtnSize * 0.8);
+    ctx.fillStyle = '#fff'; ctx.font = isMobile ? 'bold 28px Arial' : 'bold 20px Arial'; ctx.textAlign = 'center';
+    ctx.fillText('X', W - 25 - closeBtnSize/2, 20 + closeBtnSize * 0.55);
 
-    ctx.fillStyle = '#d4af37'; ctx.font = 'bold 18px Cinzel';
-    ctx.fillText('SHOP - Gold: ' + gold, W/2, 45);
+    ctx.fillStyle = '#d4af37'; ctx.font = isMobile ? 'bold 22px Cinzel' : 'bold 18px Cinzel';
+    ctx.fillText('SHOP - Gold: ' + gold, W/2, isMobile ? 52 : 45);
 
-    // Helper to draw upgrade button - BIGGER for mobile
-    function drawUpgradeBtn(name, x, y, w, color) {
-      const u = upgrades[name];
-      const maxed = u.level >= u.maxLevel;
-      const canBuy = !maxed && gold >= u.cost[u.level];
-      const cost = maxed ? 'MAX' : u.cost[u.level] + 'g';
-      const levelText = u.maxLevel > 1 ? ' Lv' + u.level : (u.level > 0 ? ' \u2713' : '');
+    // Mobile layout: single column, bigger buttons, vertical scroll only
+    if (isMobile) {
+      // Mobile-specific larger layout
+      const btnH = 48; // Much bigger button height
+      const btnW = W - 80; // Full width minus padding
+      const startX = 40;
+      const fontSize = 16;
+      const smallFontSize = 13;
 
-      ctx.fillStyle = maxed ? '#2a3a2a' : (canBuy ? color : '#2a2a3a');
-      ctx.fillRect(x, y, w, 26);
-      ctx.strokeStyle = maxed ? '#4a4' : (canBuy ? '#6a6' : '#444');
-      ctx.lineWidth = 1; ctx.strokeRect(x, y, w, 26);
+      // Apply scroll offset
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(20, 60, W - 40, H - 90);
+      ctx.clip();
 
-      ctx.fillStyle = maxed ? '#6a6' : (canBuy ? '#ddd' : '#555');
-      ctx.font = '10px Cinzel'; ctx.textAlign = 'center';
-      const label = name.replace(/([A-Z])/g, ' $1').trim().toUpperCase();
-      ctx.fillText(label + levelText + ' ' + cost, x + w/2, y + 17);
+      let y = 70 - shopScrollY;
+
+      // Helper to draw upgrade button - MOBILE version
+      function drawUpgradeBtnMobile(name, label, color) {
+        const u = upgrades[name];
+        const maxed = u.level >= u.maxLevel;
+        const canBuy = !maxed && gold >= u.cost[u.level];
+        const cost = maxed ? 'MAX' : u.cost[u.level] + 'g';
+        const levelText = u.maxLevel > 1 ? ' Lv' + u.level : (u.level > 0 ? ' \u2713' : '');
+
+        ctx.fillStyle = maxed ? '#2a3a2a' : (canBuy ? color : '#2a2a3a');
+        ctx.fillRect(startX, y, btnW, btnH);
+        ctx.strokeStyle = maxed ? '#4a4' : (canBuy ? '#6a6' : '#444');
+        ctx.lineWidth = 2; ctx.strokeRect(startX, y, btnW, btnH);
+
+        ctx.fillStyle = maxed ? '#6a6' : (canBuy ? '#fff' : '#666');
+        ctx.font = 'bold ' + fontSize + 'px Cinzel'; ctx.textAlign = 'center';
+        ctx.fillText(label + levelText, startX + btnW/2, y + btnH/2 - 4);
+        ctx.font = smallFontSize + 'px Cinzel';
+        ctx.fillText(cost, startX + btnW/2, y + btnH/2 + 14);
+        ctx.textAlign = 'left';
+
+        if (!maxed) shopButtons.push({ x: startX, y, w: btnW, h: btnH, action: 'upgrade', name });
+        y += btnH + 8;
+      }
+
+      // Section header helper
+      function drawSectionHeader(text, color) {
+        ctx.fillStyle = color; ctx.font = 'bold 18px Cinzel'; ctx.textAlign = 'left';
+        ctx.fillText(text, startX, y + 20);
+        y += 32;
+      }
+
+      // CASTLE DEFENSES
+      drawSectionHeader('CASTLE DEFENSES', '#888');
+      drawUpgradeBtnMobile('walls', 'WALLS', '#3a4a3a');
+      drawUpgradeBtnMobile('moat', 'MOAT', '#3a4a5a');
+      drawUpgradeBtnMobile('oilPots', 'OIL POTS', '#5a3a2a');
+
+      // TRAINING
+      drawSectionHeader('TRAINING', '#88ffff');
+      drawUpgradeBtnMobile('training', 'TRAINING', '#3a5a5a');
+      drawUpgradeBtnMobile('trainingSlots', 'TRAINING SLOTS', '#3a5a5a');
+      drawUpgradeBtnMobile('trainingSpeed', 'TRAINING SPEED', '#3a5a5a');
+
+      // ARCHERS
+      drawSectionHeader('ARCHERS', '#44ff44');
+      drawUpgradeBtnMobile('archerTower', 'ARCHER TOWER', '#2a5a2a');
+      drawUpgradeBtnMobile('archerSpeed', 'ARCHER SPEED', '#2a5a2a');
+      drawUpgradeBtnMobile('archerPower', 'ARCHER POWER', '#2a5a2a');
+
+      // BOMBERS
+      drawSectionHeader('BOMBERS', '#ff4444');
+      drawUpgradeBtnMobile('bomberBros', 'BOMBER BROS', '#5a2a2a');
+      drawUpgradeBtnMobile('bomberPower', 'BOMBER POWER', '#5a2a2a');
+
+      // STORM
+      drawSectionHeader('STORM', '#4488ff');
+      drawUpgradeBtnMobile('stormCaller', 'STORM CALLER', '#2a3a5a');
+      drawUpgradeBtnMobile('stormPower', 'STORM POWER', '#2a3a5a');
+      drawUpgradeBtnMobile('stormSpeed', 'STORM SPEED', '#2a3a5a');
+
+      // KNIGHTS
+      drawSectionHeader('KNIGHTS', '#aaaaaa');
+      drawUpgradeBtnMobile('knights', 'KNIGHTS', '#3a3a3a');
+      drawUpgradeBtnMobile('knightPower', 'KNIGHT POWER', '#3a3a3a');
+      drawUpgradeBtnMobile('knightLaps', 'KNIGHT LAPS', '#3a3a3a');
+
+      // SIEGE
+      drawSectionHeader('SIEGE', '#9944ff');
+      drawUpgradeBtnMobile('catapult', 'CATAPULT', '#4a2a5a');
+
+      // ABILITIES
+      drawSectionHeader('ABILITIES', '#d4af37');
+      Object.entries(abilities).forEach(([name, a]) => {
+        const canBuy = !a.unlocked && gold >= a.unlockCost;
+        const status = a.unlocked ? 'USE: ' + a.useCost + 'g' : 'UNLOCK: ' + a.unlockCost + 'g';
+
+        ctx.fillStyle = a.unlocked ? '#2a4a2a' : (canBuy ? '#4a4a2a' : '#2a2a3a');
+        ctx.fillRect(startX, y, btnW, btnH);
+        ctx.strokeStyle = a.unlocked ? '#4a4' : (canBuy ? '#aa6' : '#444');
+        ctx.lineWidth = 2; ctx.strokeRect(startX, y, btnW, btnH);
+
+        ctx.fillStyle = a.unlocked ? '#6a6' : (canBuy ? '#fff' : '#666');
+        ctx.font = 'bold ' + fontSize + 'px Cinzel'; ctx.textAlign = 'center';
+        ctx.fillText(name.toUpperCase(), startX + btnW/2, y + btnH/2 - 4);
+        ctx.font = smallFontSize + 'px Cinzel';
+        ctx.fillText(status, startX + btnW/2, y + btnH/2 + 14);
+        ctx.textAlign = 'left';
+
+        if (!a.unlocked) shopButtons.push({ x: startX, y, w: btnW, h: btnH, action: 'ability', name });
+        y += btnH + 8;
+      });
+
+      // Store total content height for scrolling
+      const totalContentHeight = y + shopScrollY - 70;
+
+      ctx.restore();
+
+      // Draw scroll indicators if needed
+      const visibleHeight = H - 90;
+      if (totalContentHeight > visibleHeight) {
+        // Scroll up arrow
+        if (shopScrollY > 0) {
+          ctx.fillStyle = '#d4af37';
+          ctx.beginPath();
+          ctx.moveTo(W/2 - 20, 70);
+          ctx.lineTo(W/2 + 20, 70);
+          ctx.lineTo(W/2, 55);
+          ctx.fill();
+          shopButtons.push({ x: W/2 - 40, y: 50, w: 80, h: 30, action: 'scrollUp' });
+        }
+        // Scroll down arrow
+        if (shopScrollY < totalContentHeight - visibleHeight) {
+          ctx.fillStyle = '#d4af37';
+          ctx.beginPath();
+          ctx.moveTo(W/2 - 20, H - 25);
+          ctx.lineTo(W/2 + 20, H - 25);
+          ctx.lineTo(W/2, H - 10);
+          ctx.fill();
+          shopButtons.push({ x: W/2 - 40, y: H - 35, w: 80, h: 30, action: 'scrollDown' });
+        }
+      }
+
+    } else {
+      // Desktop layout (original)
+      // Helper to draw upgrade button
+      function drawUpgradeBtn(name, x, y, w, color) {
+        const u = upgrades[name];
+        const maxed = u.level >= u.maxLevel;
+        const canBuy = !maxed && gold >= u.cost[u.level];
+        const cost = maxed ? 'MAX' : u.cost[u.level] + 'g';
+        const levelText = u.maxLevel > 1 ? ' Lv' + u.level : (u.level > 0 ? ' \u2713' : '');
+
+        ctx.fillStyle = maxed ? '#2a3a2a' : (canBuy ? color : '#2a2a3a');
+        ctx.fillRect(x, y, w, 26);
+        ctx.strokeStyle = maxed ? '#4a4' : (canBuy ? '#6a6' : '#444');
+        ctx.lineWidth = 1; ctx.strokeRect(x, y, w, 26);
+
+        ctx.fillStyle = maxed ? '#6a6' : (canBuy ? '#ddd' : '#555');
+        ctx.font = '10px Cinzel'; ctx.textAlign = 'center';
+        const label = name.replace(/([A-Z])/g, ' $1').trim().toUpperCase();
+        ctx.fillText(label + levelText + ' ' + cost, x + w/2, y + 17);
+        ctx.textAlign = 'left';
+
+        if (!maxed) shopButtons.push({ x, y, w, h: 26, action: 'upgrade', name });
+      }
+
+      let y = 55;
+      const col1 = 35, col2 = 125;
+      const btnW = 145;
+
+      // ROW 1: Castle Defenses
+      ctx.fillStyle = '#888'; ctx.font = 'bold 11px Cinzel'; ctx.textAlign = 'left';
+      ctx.fillText('CASTLE:', col1, y + 17);
+      drawUpgradeBtn('walls', col2, y, btnW, '#3a4a3a');
+      drawUpgradeBtn('moat', col2 + btnW + 5, y, btnW, '#3a4a5a');
+      drawUpgradeBtn('oilPots', col2 + btnW*2 + 10, y, btnW, '#5a3a2a');
+      y += 32;
+
+      // ROW 2: Training
+      ctx.fillStyle = '#88ffff'; ctx.fillText('TRAINING:', col1, y + 17);
+      drawUpgradeBtn('training', col2, y, btnW, '#3a5a5a');
+      drawUpgradeBtn('trainingSlots', col2 + btnW + 5, y, btnW, '#3a5a5a');
+      drawUpgradeBtn('trainingSpeed', col2 + btnW*2 + 10, y, btnW, '#3a5a5a');
+      y += 32;
+
+      // ROW 3: Archers (green)
+      ctx.fillStyle = '#44ff44'; ctx.fillText('ARCHERS:', col1, y + 17);
+      drawUpgradeBtn('archerTower', col2, y, btnW, '#2a5a2a');
+      drawUpgradeBtn('archerSpeed', col2 + btnW + 5, y, btnW, '#2a5a2a');
+      drawUpgradeBtn('archerPower', col2 + btnW*2 + 10, y, btnW, '#2a5a2a');
+      y += 32;
+
+      // ROW 4: Bombers (red)
+      ctx.fillStyle = '#ff4444'; ctx.fillText('BOMBERS:', col1, y + 17);
+      drawUpgradeBtn('bomberBros', col2, y, btnW, '#5a2a2a');
+      drawUpgradeBtn('bomberPower', col2 + btnW + 5, y, btnW, '#5a2a2a');
+      y += 32;
+
+      // ROW 5: Storm (blue)
+      ctx.fillStyle = '#4488ff'; ctx.fillText('STORM:', col1, y + 17);
+      drawUpgradeBtn('stormCaller', col2, y, btnW, '#2a3a5a');
+      drawUpgradeBtn('stormPower', col2 + btnW + 5, y, btnW, '#2a3a5a');
+      drawUpgradeBtn('stormSpeed', col2 + btnW*2 + 10, y, btnW, '#2a3a5a');
+      y += 32;
+
+      // ROW 6: Knights (dark)
+      ctx.fillStyle = '#aaaaaa'; ctx.fillText('KNIGHTS:', col1, y + 17);
+      drawUpgradeBtn('knights', col2, y, btnW, '#3a3a3a');
+      drawUpgradeBtn('knightPower', col2 + btnW + 5, y, btnW, '#3a3a3a');
+      drawUpgradeBtn('knightLaps', col2 + btnW*2 + 10, y, btnW, '#3a3a3a');
+      y += 32;
+
+      // ROW 7: Catapult (purple)
+      ctx.fillStyle = '#9944ff'; ctx.fillText('SIEGE:', col1, y + 17);
+      drawUpgradeBtn('catapult', col2, y, btnW, '#4a2a5a');
+      y += 36;
+
+      // ABILITIES section
+      ctx.fillStyle = '#d4af37'; ctx.font = 'bold 13px Cinzel'; ctx.textAlign = 'left';
+      ctx.fillText('ABILITIES (unlock once, pay to use):', col1, y + 14);
+      y += 22;
+      let ax = col1;
+      Object.entries(abilities).forEach(([name, a]) => {
+        const canBuy = !a.unlocked && gold >= a.unlockCost;
+        const status = a.unlocked ? 'USE: ' + a.useCost + 'g' : 'UNLOCK: ' + a.unlockCost + 'g';
+
+        ctx.fillStyle = a.unlocked ? '#2a4a2a' : (canBuy ? '#4a4a2a' : '#2a2a3a');
+        ctx.fillRect(ax, y, 145, 32);
+        ctx.strokeStyle = a.unlocked ? '#4a4' : (canBuy ? '#aa6' : '#444');
+        ctx.lineWidth = 1; ctx.strokeRect(ax, y, 145, 32);
+
+        ctx.fillStyle = a.unlocked ? '#6a6' : (canBuy ? '#ddd' : '#555');
+        ctx.font = '11px Cinzel'; ctx.textAlign = 'center';
+        ctx.fillText(name.toUpperCase(), ax + 72, y + 14);
+        ctx.font = '9px Cinzel';
+        ctx.fillText(status, ax + 72, y + 26);
+        ctx.textAlign = 'left';
+
+        if (!a.unlocked) shopButtons.push({ x: ax, y, w: 145, h: 32, action: 'ability', name });
+        ax += 155;
+      });
+      y += 40;
+
+      // Info at bottom
+      ctx.fillStyle = '#888'; ctx.font = '9px Cinzel'; ctx.textAlign = 'center';
+      ctx.fillText('TRAINING: Throw enemies OFF SCREEN to kill for gold | Throw INTO castle to capture', W/2, y + 10);
+      ctx.fillText('Click colored TOWER FLAGS to assign trained skeletons', W/2, y + 22);
+      ctx.fillStyle = '#ff8844'; ctx.font = '8px Cinzel';
+      ctx.fillText('ENEMY BOMBERS are nearly immune to archers/storm - CLICK them to defuse!', W/2, y + 34);
       ctx.textAlign = 'left';
-
-      if (!maxed) shopButtons.push({ x, y, w, h: 26, action: 'upgrade', name });
     }
-
-    let y = 55;
-    const col1 = 35, col2 = 125;
-    const btnW = 145; // Wider buttons for mobile
-
-    // ROW 1: Castle Defenses
-    ctx.fillStyle = '#888'; ctx.font = 'bold 11px Cinzel'; ctx.textAlign = 'left';
-    ctx.fillText('CASTLE:', col1, y + 17);
-    drawUpgradeBtn('walls', col2, y, btnW, '#3a4a3a');
-    drawUpgradeBtn('moat', col2 + btnW + 5, y, btnW, '#3a4a5a');
-    drawUpgradeBtn('oilPots', col2 + btnW*2 + 10, y, btnW, '#5a3a2a');
-    y += 32;
-
-    // ROW 2: Training
-    ctx.fillStyle = '#88ffff'; ctx.fillText('TRAINING:', col1, y + 17);
-    drawUpgradeBtn('training', col2, y, btnW, '#3a5a5a');
-    drawUpgradeBtn('trainingSlots', col2 + btnW + 5, y, btnW, '#3a5a5a');
-    drawUpgradeBtn('trainingSpeed', col2 + btnW*2 + 10, y, btnW, '#3a5a5a');
-    y += 32;
-
-    // ROW 3: Archers (green)
-    ctx.fillStyle = '#44ff44'; ctx.fillText('ARCHERS:', col1, y + 17);
-    drawUpgradeBtn('archerTower', col2, y, btnW, '#2a5a2a');
-    drawUpgradeBtn('archerSpeed', col2 + btnW + 5, y, btnW, '#2a5a2a');
-    drawUpgradeBtn('archerPower', col2 + btnW*2 + 10, y, btnW, '#2a5a2a');
-    y += 32;
-
-    // ROW 4: Bombers (red)
-    ctx.fillStyle = '#ff4444'; ctx.fillText('BOMBERS:', col1, y + 17);
-    drawUpgradeBtn('bomberBros', col2, y, btnW, '#5a2a2a');
-    drawUpgradeBtn('bomberPower', col2 + btnW + 5, y, btnW, '#5a2a2a');
-    y += 32;
-
-    // ROW 5: Storm (blue)
-    ctx.fillStyle = '#4488ff'; ctx.fillText('STORM:', col1, y + 17);
-    drawUpgradeBtn('stormCaller', col2, y, btnW, '#2a3a5a');
-    drawUpgradeBtn('stormPower', col2 + btnW + 5, y, btnW, '#2a3a5a');
-    drawUpgradeBtn('stormSpeed', col2 + btnW*2 + 10, y, btnW, '#2a3a5a');
-    y += 32;
-
-    // ROW 6: Knights (dark)
-    ctx.fillStyle = '#aaaaaa'; ctx.fillText('KNIGHTS:', col1, y + 17);
-    drawUpgradeBtn('knights', col2, y, btnW, '#3a3a3a');
-    drawUpgradeBtn('knightPower', col2 + btnW + 5, y, btnW, '#3a3a3a');
-    drawUpgradeBtn('knightLaps', col2 + btnW*2 + 10, y, btnW, '#3a3a3a');
-    y += 32;
-
-    // ROW 7: Catapult (purple)
-    ctx.fillStyle = '#9944ff'; ctx.fillText('SIEGE:', col1, y + 17);
-    drawUpgradeBtn('catapult', col2, y, btnW, '#4a2a5a');
-    y += 36;
-
-    // ABILITIES section
-    ctx.fillStyle = '#d4af37'; ctx.font = 'bold 13px Cinzel'; ctx.textAlign = 'left';
-    ctx.fillText('ABILITIES (unlock once, pay to use):', col1, y + 14);
-    y += 22;
-    let ax = col1;
-    Object.entries(abilities).forEach(([name, a]) => {
-      const canBuy = !a.unlocked && gold >= a.unlockCost;
-      const status = a.unlocked ? 'USE: ' + a.useCost + 'g' : 'UNLOCK: ' + a.unlockCost + 'g';
-
-      ctx.fillStyle = a.unlocked ? '#2a4a2a' : (canBuy ? '#4a4a2a' : '#2a2a3a');
-      ctx.fillRect(ax, y, 145, 32);
-      ctx.strokeStyle = a.unlocked ? '#4a4' : (canBuy ? '#aa6' : '#444');
-      ctx.lineWidth = 1; ctx.strokeRect(ax, y, 145, 32);
-
-      ctx.fillStyle = a.unlocked ? '#6a6' : (canBuy ? '#ddd' : '#555');
-      ctx.font = '11px Cinzel'; ctx.textAlign = 'center';
-      ctx.fillText(name.toUpperCase(), ax + 72, y + 14);
-      ctx.font = '9px Cinzel';
-      ctx.fillText(status, ax + 72, y + 26);
-      ctx.textAlign = 'left';
-
-      if (!a.unlocked) shopButtons.push({ x: ax, y, w: 145, h: 32, action: 'ability', name });
-      ax += 155;
-    });
-    y += 40;
-
-    // Info at bottom
-    ctx.fillStyle = '#888'; ctx.font = '9px Cinzel'; ctx.textAlign = 'center';
-    ctx.fillText('TRAINING: Throw enemies OFF SCREEN to kill for gold | Throw INTO castle to capture', W/2, y + 10);
-    ctx.fillText('Click colored TOWER FLAGS to assign trained skeletons', W/2, y + 22);
-    ctx.fillStyle = '#ff8844'; ctx.font = '8px Cinzel';
-    ctx.fillText('ENEMY BOMBERS are nearly immune to archers/storm - CLICK them to defuse!', W/2, y + 34);
-    ctx.textAlign = 'left';
   }
 
   function handleShopClick(mx, my) {
-    const upgradeCount = Object.keys(upgrades).length;
-    const maxScroll = Math.max(0, (upgradeCount * 34) - 220);
+    const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.innerWidth < 800;
+    // Mobile has much more content (single column)
+    const maxScroll = isMobile ? 1200 : Math.max(0, (Object.keys(upgrades).length * 34) - 220);
 
     for (const btn of shopButtons) {
       if (mx > btn.x && mx < btn.x + btn.w && my > btn.y && my < btn.y + btn.h) {
         if (btn.action === 'upgrade') buyUpgrade(btn.name);
         else if (btn.action === 'ability') buyAbility(btn.name);
-        else if (btn.action === 'scrollUp') { shopScrollY = Math.max(0, shopScrollY - 68); }
-        else if (btn.action === 'scrollDown') { shopScrollY = Math.min(maxScroll, shopScrollY + 68); }
+        else if (btn.action === 'scrollUp') { shopScrollY = Math.max(0, shopScrollY - 120); }
+        else if (btn.action === 'scrollDown') { shopScrollY = Math.min(maxScroll, shopScrollY + 120); }
         return true;
       }
     }
@@ -5295,10 +5443,28 @@ function drawSkull(ctx, x, y, size, color) {
   C.addEventListener('wheel', ev => {
     if (!showShop) return;
     ev.preventDefault();
-    const upgradeCount = Object.keys(upgrades).length;
-    const maxScroll = Math.max(0, (upgradeCount * 34) - 220);
+    const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.innerWidth < 800;
+    const maxScroll = isMobile ? 1200 : Math.max(0, (Object.keys(upgrades).length * 34) - 220);
     shopScrollY = Math.max(0, Math.min(maxScroll, shopScrollY + ev.deltaY * 0.5));
   }, { passive: false });
+
+  // Touch swipe scrolling for mobile shop
+  let shopTouchStartY = 0;
+  let shopTouchScrollStart = 0;
+  C.addEventListener('touchstart', ev => {
+    if (!showShop) return;
+    shopTouchStartY = ev.touches[0].clientY;
+    shopTouchScrollStart = shopScrollY;
+  }, { passive: true });
+
+  C.addEventListener('touchmove', ev => {
+    if (!showShop) return;
+    const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.innerWidth < 800;
+    if (!isMobile) return;
+    const deltaY = shopTouchStartY - ev.touches[0].clientY;
+    const maxScroll = 1200;
+    shopScrollY = Math.max(0, Math.min(maxScroll, shopTouchScrollStart + deltaY));
+  }, { passive: true });
 
   function gameOver() {
     state = 'over'; cancelAnimationFrame(raf);
@@ -5485,9 +5651,13 @@ function drawSkull(ctx, x, y, size, color) {
       }
     }
 
-    // ENEMY interactions - larger touch area for mobile (35px margin)
-    const touchMargin = 35;
+    // ENEMY interactions - larger touch area for mobile (bigger near castle wall)
+    const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+    const baseTouchMargin = isMobile ? 55 : 40; // Much bigger on mobile
     for (const e of enemies) {
+      // Extra margin near castle wall where it's hard to grab
+      const nearCastleWall = e.x > CASTLE_X - 150;
+      const touchMargin = nearCastleWall ? baseTouchMargin + 25 : baseTouchMargin;
       if ((e.state === 'walk' || e.state === 'attack' || e.state === 'stunned') &&
           mouseX > e.x - touchMargin && mouseX < e.x + e.size + touchMargin &&
           mouseY > e.y - e.size - touchMargin && mouseY < e.y + touchMargin) {
@@ -5501,15 +5671,15 @@ function drawSkull(ctx, x, y, size, color) {
           e.state = 'held';
           heldEnemy = e;
           AudioSystem.SFX.grab();
-          showTalkBubble(C, e.x + e.size/2, e.y - e.size, 'grab');
+          // No talk bubble for small skeletons - just the GRABBED text
           particles.push({ x: e.x + e.size/2, y: e.y - e.size - 5, vx: 0, vy: -1, life: 25, text: 'GRABBED!', color: '#88ff88' });
         }
         else if ((e.isGiant || e.isRam || e.isBoss || e.isTitan || e.isBrute) && e.state !== 'stunned') {
           // Click to make big guys fall down!
           e.state = 'stunned';
           e.stunTimer = 150;
-          // Funny PG cuss symbols in thought bubble
-          const curses = ['#$%@!!', '@#*&!!', '%$#@!?', '!@#$%!', '*#@%!!', '$@#%&!'];
+          // Funny almost-curse words in thought bubble
+          const curses = ['SHUCKS!', 'DARN IT!', 'POOP!', 'OW!', 'FUDGE!', 'HECK!', 'CRUD!', 'SHOOT!', 'RATS!', 'DANG!', 'OUCH!', 'JEEZ!', 'YIKES!', 'GOLLY!', 'GEEZ!'];
           const curse = curses[Math.floor(Math.random() * curses.length)];
           particles.push({ x: e.x + e.size/2, y: e.y - e.size - 10, vx: 0, vy: -0.5, life: 60, text: curse, color: '#ff4444', big: true, bubble: true });
           particles.push({ x: e.x + e.size/2, y: e.y - e.size/2, vx: 0, vy: 0, life: 20, text: 'THUD!', color: '#ffaa00' });
