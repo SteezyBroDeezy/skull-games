@@ -662,7 +662,13 @@ const AudioSystem = (function() {
     splat: () => { playNoise(0.15, 0.35); playTone(100, 0.1, 'square', 0.2); },
     castleHit: () => { playNoise(0.2, 0.4); playTone(80, 0.15, 'sawtooth', 0.3); },
     waveStart: () => { playTone(300, 0.1, 'square', 0.2); playTone(400, 0.1, 'square', 0.2, 0.1); playTone(500, 0.15, 'square', 0.25, 0.2); },
-    purchase: () => { playTone(800, 0.08, 'sine', 0.2); playTone(1000, 0.08, 'sine', 0.2, 0.08); playTone(1200, 0.1, 'sine', 0.25, 0.16); }
+    purchase: () => { playTone(800, 0.08, 'sine', 0.2); playTone(1000, 0.08, 'sine', 0.2, 0.08); playTone(1200, 0.1, 'sine', 0.25, 0.16); },
+    // Fun assign sounds for tower flags!
+    assignArcher: () => { playTone(440, 0.08, 'sine', 0.25); playTone(660, 0.1, 'sine', 0.3, 0.08); playTone(880, 0.12, 'sine', 0.25, 0.16); },
+    assignBomber: () => { playTone(200, 0.1, 'sawtooth', 0.3); playTone(300, 0.15, 'square', 0.35, 0.1); playNoise(0.1, 0.2, 0.2); },
+    assignStorm: () => { playTone(600, 0.05, 'sine', 0.2); playTone(800, 0.05, 'sine', 0.25, 0.05); playTone(1000, 0.08, 'sine', 0.3, 0.1); playTone(1200, 0.1, 'sine', 0.2, 0.15); },
+    assignKnight: () => { playTone(150, 0.1, 'sawtooth', 0.3); playTone(200, 0.15, 'square', 0.35, 0.1); playTone(250, 0.1, 'sawtooth', 0.25, 0.2); },
+    assignCatapult: () => { playTone(100, 0.15, 'sawtooth', 0.35); playTone(150, 0.1, 'square', 0.3, 0.15); playNoise(0.15, 0.3, 0.25); }
   };
 
   // Music generators
@@ -3707,11 +3713,21 @@ function drawSkull(ctx, x, y, size, color) {
   let oilTimer = 0;
 
   // SPECIAL ABILITIES - Unlock first, then costs gold each use + cooldown
+  // Price increases by 5g each use!
   const abilities = {
-    arrowRain: { cooldown: 0, maxCooldown: 600, unlockCost: 80, useCost: 15, unlocked: false, desc: 'Arrow rain (15g)' },
-    lightning: { cooldown: 0, maxCooldown: 900, unlockCost: 150, useCost: 25, unlocked: false, desc: 'Storm (25g)' },
-    boulder: { cooldown: 0, maxCooldown: 1500, unlockCost: 250, useCost: 200, unlocked: false, desc: 'Boulder (200g)' }
+    arrowRain: { cooldown: 0, maxCooldown: 600, unlockCost: 80, useCost: 15, baseUseCost: 15, useCount: 0, unlocked: false, desc: 'Arrow rain (15g)' },
+    lightning: { cooldown: 0, maxCooldown: 900, unlockCost: 150, useCost: 25, baseUseCost: 25, useCount: 0, unlocked: false, desc: 'Storm (25g)' },
+    boulder: { cooldown: 0, maxCooldown: 1500, unlockCost: 250, useCost: 200, baseUseCost: 200, useCount: 0, unlocked: false, desc: 'Boulder (200g)' }
   };
+
+  // Track repair uses for increasing cost
+  let repairCount = 0;
+  const REPAIR_BASE_COST = 50;
+  const REPAIR_COST_INCREASE = 15; // Each repair costs 15g more
+
+  // Track deaths for hints
+  let deathCount = 0;
+  let lastDeathWave = 0;
 
   // DEFENDER TYPES - for assignments
   let archerTimers = []; // Each archer has own timer for staggered firing
@@ -3782,7 +3798,15 @@ function drawSkull(ctx, x, y, size, color) {
     bomberUnits = []; stormCount = 0; knightUnits = []; catapultCount = 0;
     waveSpawnTimer = 0; waveEnemiesLeft = []; stormZapTimer = 0;
     Object.keys(upgrades).forEach(k => upgrades[k].level = 0);
-    Object.keys(abilities).forEach(k => { abilities[k].cooldown = 0; abilities[k].unlocked = false; });
+    // Reset abilities - restore original costs!
+    Object.keys(abilities).forEach(k => {
+      abilities[k].cooldown = 0;
+      abilities[k].unlocked = false;
+      abilities[k].useCost = abilities[k].baseUseCost; // Reset to base cost
+      abilities[k].useCount = 0;
+    });
+    // Reset repair cost
+    repairCount = 0;
     oilTimer = 0;
     document.getElementById('castle-over').classList.remove('show');
     updateHUD();
@@ -3962,8 +3986,13 @@ function drawSkull(ctx, x, y, size, color) {
       particles.push({ x: W/2, y: H/2, vx: 0, vy: 0, life: 60, text: 'Need ' + a.useCost + 'g!', color: '#ff4444', big: true });
       return;
     }
+    const costPaid = a.useCost;
     gold -= a.useCost;
     a.cooldown = a.maxCooldown;
+    // Increase cost for next use! (+5g for arrows/storm, +25g for boulder)
+    const priceIncrease = (name === 'boulder') ? 25 : 5;
+    a.useCost += priceIncrease;
+    a.useCount++;
     updateHUD();
 
     if (name === 'arrowRain') {
@@ -5042,8 +5071,15 @@ function drawSkull(ctx, x, y, size, color) {
           ctx.beginPath(); ctx.arc(p.x - 5, p.y + 26, 3, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
         }
         ctx.fillStyle = p.color;
-        ctx.font = p.big ? 'bold 18px Cinzel' : 'bold 12px Cinzel';
+        // Bigger, clearer fonts - no pixelation
+        ctx.font = p.big ? 'bold 24px Arial, sans-serif' : 'bold 14px Arial, sans-serif';
+        // Add text shadow for better readability
+        ctx.shadowColor = '#000';
+        ctx.shadowBlur = 4;
+        ctx.shadowOffsetX = 2;
+        ctx.shadowOffsetY = 2;
         ctx.textAlign = 'center'; ctx.fillText(p.text, p.x, p.y + 4); ctx.textAlign = 'left';
+        ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
       } else {
         ctx.fillStyle = p.color;
         ctx.beginPath(); ctx.arc(p.x, p.y, p.size/2, 0, Math.PI * 2); ctx.fill();
@@ -5232,6 +5268,23 @@ function drawSkull(ctx, x, y, size, color) {
       drawUpgradeBtnMobile('moat', 'MOAT', '#3a4a5a');
       drawUpgradeBtnMobile('oilPots', 'OIL POTS', '#5a3a2a');
 
+      // REPAIR - special button with dynamic cost!
+      const repairCostShop = REPAIR_BASE_COST + (repairCount * REPAIR_COST_INCREASE);
+      const canRepair = gold >= repairCostShop && castleHP < maxHP;
+      ctx.fillStyle = canRepair ? '#3a5a3a' : '#2a2a3a';
+      ctx.fillRect(startX, y, btnW, btnH);
+      ctx.strokeStyle = canRepair ? '#8f8' : '#555';
+      ctx.lineWidth = 3; ctx.strokeRect(startX, y, btnW, btnH);
+      ctx.fillStyle = canRepair ? '#fff' : '#666';
+      ctx.font = 'bold ' + fontSize + 'px Cinzel'; ctx.textAlign = 'center';
+      ctx.fillText('REPAIR +25 HP', startX + btnW/2, y + btnH/2 - 6);
+      ctx.font = smallFontSize + 'px Cinzel';
+      ctx.fillStyle = canRepair ? '#88ff88' : '#888';
+      ctx.fillText(repairCostShop + 'g (price increases!)', startX + btnW/2, y + btnH/2 + 18);
+      ctx.textAlign = 'left';
+      shopButtons.push({ x: startX, y, w: btnW, h: btnH, action: 'upgrade', name: 'repair' });
+      y += btnH + 10;
+
       // TRAINING
       drawSectionHeader('TRAINING', '#88ffff');
       drawUpgradeBtnMobile('training', 'TRAINING', '#3a5a5a');
@@ -5362,12 +5415,23 @@ function drawSkull(ctx, x, y, size, color) {
       const col1 = 35, col2 = 125;
       const btnW = 145;
 
-      // ROW 1: Castle Defenses
+      // ROW 1: Castle Defenses + REPAIR
       ctx.fillStyle = '#888'; ctx.font = 'bold 11px Cinzel'; ctx.textAlign = 'left';
       ctx.fillText('CASTLE:', col1, y + 17);
       drawUpgradeBtn('walls', col2, y, btnW, '#3a4a3a');
       drawUpgradeBtn('moat', col2 + btnW + 5, y, btnW, '#3a4a5a');
-      drawUpgradeBtn('oilPots', col2 + btnW*2 + 10, y, btnW, '#5a3a2a');
+      // REPAIR button with dynamic cost
+      const repairCostDesk = REPAIR_BASE_COST + (repairCount * REPAIR_COST_INCREASE);
+      const canRepairDesk = gold >= repairCostDesk && castleHP < maxHP;
+      ctx.fillStyle = canRepairDesk ? '#3a5a3a' : '#2a2a3a';
+      ctx.fillRect(col2 + btnW*2 + 10, y, btnW, 26);
+      ctx.strokeStyle = canRepairDesk ? '#6a6' : '#444';
+      ctx.lineWidth = 1; ctx.strokeRect(col2 + btnW*2 + 10, y, btnW, 26);
+      ctx.fillStyle = canRepairDesk ? '#ddd' : '#555';
+      ctx.font = '10px Cinzel'; ctx.textAlign = 'center';
+      ctx.fillText('REPAIR +25HP ' + repairCostDesk + 'g', col2 + btnW*2 + 10 + btnW/2, y + 17);
+      ctx.textAlign = 'left';
+      shopButtons.push({ x: col2 + btnW*2 + 10, y, w: btnW, h: 26, action: 'upgrade', name: 'repair' });
       y += 32;
 
       // ROW 2: Training
@@ -5495,10 +5559,65 @@ function drawSkull(ctx, x, y, size, color) {
   function gameOver() {
     state = 'over'; cancelAnimationFrame(raf);
     AudioSystem.stopMusic();
+    deathCount++;
+    lastDeathWave = wave;
     document.getElementById('castle-over').classList.add('show');
     document.getElementById('castle-final').textContent = 'Wave ' + wave + ' - ' + kills + ' kills - ' + gold + ' gold';
-    document.getElementById('castle-funny').textContent = getDeathJoke();
+    // Show helpful hints based on what wave they died on
+    const hint = getDeathHint(wave, deathCount);
+    document.getElementById('castle-funny').textContent = hint;
     addToLeaderboard('castle', wave * 100 + kills);
+  }
+
+  function getDeathHint(w, deaths) {
+    // Early game tips
+    if (w <= 3) {
+      const tips = [
+        'TIP: Grab small skeletons and throw them HIGH to kill them!',
+        'TIP: Click the SHOP button to buy upgrades between waves!',
+        'TIP: Throw skeletons INTO your castle to capture & train them!',
+        'TIP: Buy WALLS first - they give you more HP!'
+      ];
+      return tips[deaths % tips.length];
+    }
+    // Mid game tips
+    if (w <= 8) {
+      const tips = [
+        'TIP: Buy TRAINING to convert captured skeletons into soldiers!',
+        'TIP: Assign trained skeletons to towers by clicking the FLAGS!',
+        'TIP: ARCHERS (green flag) are great for clearing waves!',
+        'TIP: Click on BIG skeletons to stun them - they say funny things!'
+      ];
+      return tips[deaths % tips.length];
+    }
+    // Giants/Brutes tips
+    if (w <= 12) {
+      const tips = [
+        'TIP: GIANTS & BRUTES cant be grabbed - click to stun them!',
+        'TIP: BOMBERS (red tower) do MASSIVE damage - click them to explode!',
+        'TIP: Bombers hurt ALL enemies including brutes & titans!',
+        'TIP: STORM (blue tower) damages groups but some are immune!'
+      ];
+      return tips[deaths % tips.length];
+    }
+    // Late game tips
+    if (w <= 16) {
+      const tips = [
+        'TIP: SHIELDBEARERS block arrows - use Storm or Bombers!',
+        'TIP: MAGES resist storm - use Arrows or Bombers on them!',
+        'TIP: TITANS resist BOTH arrows AND storm - use BOMBERS!',
+        'TIP: Buy BOULDER ability - it kills everything on screen!'
+      ];
+      return tips[deaths % tips.length];
+    }
+    // Super late game
+    const tips = [
+      'TIP: JUGGERNAUTS are immune to arrows AND storm - BOMBERS only!',
+      'TIP: Upgrade BOMBER POWER for bigger explosions!',
+      'TIP: REPAIR costs more each time - save gold for emergencies!',
+      'TIP: Mix all tower types for best coverage!'
+    ];
+    return tips[deaths % tips.length];
   }
 
   function loop() {
@@ -5531,19 +5650,25 @@ function drawSkull(ctx, x, y, size, color) {
 
   function buyUpgrade(name) {
     const u = upgrades[name];
-    // Special handling for repair - always costs 50g, heals 25 HP, can buy unlimited times
+    // Special handling for repair - price increases each time!
     if (u.isRepair) {
-      if (gold < 50) return;
+      const repairCost = REPAIR_BASE_COST + (repairCount * REPAIR_COST_INCREASE);
+      if (gold < repairCost) {
+        particles.push({ x: W/2, y: H/2, vx: 0, vy: -1, life: 40, text: 'Need ' + repairCost + 'g to repair!', color: '#ff4444', big: true });
+        return;
+      }
       if (castleHP >= maxHP) {
         particles.push({ x: W/2, y: H/2, vx: 0, vy: -1, life: 40, text: 'Castle is full HP!', color: '#ffaa00', big: true });
         return;
       }
-      gold -= 50;
+      gold -= repairCost;
+      repairCount++; // Increase cost for next repair
       const healAmount = Math.min(25, maxHP - castleHP);
       castleHP += healAmount;
       AudioSystem.SFX.purchase();
       updateHUD();
-      particles.push({ x: W/2, y: H/2, vx: 0, vy: -1, life: 60, text: '+' + healAmount + ' HP repaired!', color: '#88ff88', big: true });
+      const nextCost = REPAIR_BASE_COST + (repairCount * REPAIR_COST_INCREASE);
+      particles.push({ x: W/2, y: H/2, vx: 0, vy: -1, life: 60, text: '+' + healAmount + ' HP! Next repair: ' + nextCost + 'g', color: '#88ff88', big: true });
       return;
     }
     if (u.level >= u.maxLevel || gold < u.cost[u.level]) return;
@@ -5593,32 +5718,33 @@ function drawSkull(ctx, x, y, size, color) {
       }
     }
 
-    // TOWER FLAG CLICKS - each tower is 32px apart starting at castleLeft + 60
-    // BIGGER HIT AREAS for easier clicking
+    // TOWER FLAG CLICKS - MUCH BIGGER for mobile/touchscreen!
+    const isMobileFlag = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
     const castleLeft = CASTLE_X - 120;
-    const towerWidth = 45, towerSpacing = 32;  // Wider click area
-    let towerX = castleLeft + 50;  // Start a bit earlier
+    const towerWidth = isMobileFlag ? 65 : 50;  // Much wider on mobile
+    const towerSpacing = 32;
+    let towerX = castleLeft + 50;
     const flagClickY = GROUND - 185;
-    const flagClickRange = 35;  // Taller click area (was 20)
+    const flagClickRange = isMobileFlag ? 55 : 40;  // Much taller on mobile
 
     // Archer tower flag (GREEN) - FAR LEFT position
     const archerTowerClickX = castleLeft + 5;
     if (upgrades.archerTower.level > 0 && trainedSupply > 0) {
-      if (mouseX > archerTowerClickX && mouseX < archerTowerClickX + towerWidth && mouseY > flagClickY - flagClickRange && mouseY < flagClickY + flagClickRange) {
+      if (mouseX > archerTowerClickX - 10 && mouseX < archerTowerClickX + towerWidth && mouseY > flagClickY - flagClickRange && mouseY < flagClickY + flagClickRange) {
         trainedSupply--;
-        // Add archer with random timer offset so they fire at different times
         archerTimers.push({ timer: Math.floor(Math.random() * ARCHER_FIRE_RATE), offset: Math.floor(Math.random() * 60) - 30 });
+        AudioSystem.SFX.assignArcher();
         particles.push({ x: W/2, y: H/2, vx: 0, vy: -1, life: 60, text: 'Archer assigned! (' + archerTimers.length + ')', color: '#44ff44', big: true });
         return;
       }
-      // Don't advance towerX - archer is separate
     }
 
     // Bomber tower flag (RED)
     if (upgrades.bomberBros.level > 0 && trainedSupply > 0) {
-      if (mouseX > towerX && mouseX < towerX + towerWidth && mouseY > flagClickY - flagClickRange && mouseY < flagClickY + flagClickRange) {
+      if (mouseX > towerX - 10 && mouseX < towerX + towerWidth && mouseY > flagClickY - flagClickRange && mouseY < flagClickY + flagClickRange) {
         trainedSupply--;
         bomberUnits.push({ x: CASTLE_X - 100, y: GROUND });
+        AudioSystem.SFX.assignBomber();
         particles.push({ x: W/2, y: H/2, vx: 0, vy: 0, life: 40, text: 'BOMBER DEPLOYED!', color: '#ff6644', big: true });
         return;
       }
@@ -5627,8 +5753,9 @@ function drawSkull(ctx, x, y, size, color) {
 
     // Storm tower flag (BLUE)
     if (upgrades.stormCaller.level > 0 && trainedSupply > 0) {
-      if (mouseX > towerX && mouseX < towerX + towerWidth && mouseY > flagClickY - flagClickRange && mouseY < flagClickY + flagClickRange) {
+      if (mouseX > towerX - 10 && mouseX < towerX + towerWidth && mouseY > flagClickY - flagClickRange && mouseY < flagClickY + flagClickRange) {
         trainedSupply--; stormCount++;
+        AudioSystem.SFX.assignStorm();
         particles.push({ x: W/2, y: H/2, vx: 0, vy: 0, life: 40, text: 'Storm Caller assigned! (' + stormCount + ')', color: '#4488ff', big: true });
         return;
       }
@@ -5637,9 +5764,10 @@ function drawSkull(ctx, x, y, size, color) {
 
     // Knight tower flag (BLACK)
     if (upgrades.knights.level > 0 && trainedSupply > 0) {
-      if (mouseX > towerX && mouseX < towerX + towerWidth && mouseY > flagClickY - flagClickRange && mouseY < flagClickY + flagClickRange) {
+      if (mouseX > towerX - 10 && mouseX < towerX + towerWidth && mouseY > flagClickY - flagClickRange && mouseY < flagClickY + flagClickRange) {
         trainedSupply--;
         knightUnits.push({ x: CASTLE_X - 80, y: GROUND, hp: 5, attackTimer: 0, returning: false });
+        AudioSystem.SFX.assignKnight();
         particles.push({ x: W/2, y: H/2, vx: 0, vy: 0, life: 40, text: 'KNIGHT CHARGES!', color: '#ffdd44', big: true });
         return;
       }
@@ -5648,31 +5776,38 @@ function drawSkull(ctx, x, y, size, color) {
 
     // Catapult tower flag (PURPLE)
     if (upgrades.catapult.level > 0 && trainedSupply > 0) {
-      if (mouseX > towerX && mouseX < towerX + towerWidth && mouseY > flagClickY - flagClickRange && mouseY < flagClickY + flagClickRange) {
+      if (mouseX > towerX - 10 && mouseX < towerX + towerWidth && mouseY > flagClickY - flagClickRange && mouseY < flagClickY + flagClickRange) {
         trainedSupply--; catapultCount++;
+        AudioSystem.SFX.assignCatapult();
         particles.push({ x: W/2, y: H/2, vx: 0, vy: 0, life: 40, text: 'Catapult manned! (' + catapultCount + ')', color: '#9944ff', big: true });
         return;
       }
     }
 
-    // Check if clicking a bomber unit to explode it
+    // Check if clicking a bomber unit to explode it - 4X BIGGER AND STRONGER!
     for (let i = bomberUnits.length - 1; i >= 0; i--) {
       const b = bomberUnits[i];
       if (mouseX > b.x - 25 && mouseX < b.x + 25 && mouseY > b.y - 55 && mouseY < b.y) {
         const explodeX = b.x, explodeY = b.y - 20;
-        // Bomber damage: base 15 + 8 per upgrade level (much stronger!)
-        const bomberDamage = 15 + upgrades.bomberPower.level * 8;
-        const blastRadius = 100 + upgrades.bomberPower.level * 20;
+        // Bomber damage: 4X base damage! (60 base + 32 per level)
+        const bomberDamage = 60 + upgrades.bomberPower.level * 32;
+        // Bomber blast radius: 4X bigger! (400 base + 80 per level)
+        const blastRadius = 400 + upgrades.bomberPower.level * 80;
         enemies.forEach(e => {
+          // Bombers can hurt ALL enemies including brutes (red demons)!
           if (e.state !== 'dead' && Math.hypot(e.x + e.size/2 - explodeX, e.y - e.size/2 - explodeY) < blastRadius) {
             e.hp -= bomberDamage;
             if (e.hp <= 0) killEnemy(e, false);
           }
         });
-        for (let k = 0; k < 25; k++) {
-          particles.push({ x: explodeX, y: explodeY, vx: (Math.random()-0.5)*14, vy: -Math.random()*10, life: 40, color: k % 2 ? '#ff6644' : '#ffaa00', size: 9 });
+        // Bigger explosion particles!
+        for (let k = 0; k < 50; k++) {
+          particles.push({ x: explodeX, y: explodeY, vx: (Math.random()-0.5)*20, vy: -Math.random()*15, life: 50, color: k % 2 ? '#ff6644' : '#ffaa00', size: 12 });
         }
+        // Screen shake effect text
+        particles.push({ x: explodeX, y: explodeY - 30, vx: 0, vy: -2, life: 40, text: 'BOOM!', color: '#ff4400', big: true });
         bomberUnits.splice(i, 1);
+        AudioSystem.SFX.explosion();
         return;
       }
     }
