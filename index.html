@@ -5158,38 +5158,43 @@ function drawSkull(ctx, x, y, size, color) {
     // Detect mobile for bigger shop items
     const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.innerWidth < 800;
 
-    ctx.fillStyle = 'rgba(0,0,0,0.95)'; ctx.fillRect(20, 15, W - 40, H - 30);
-    ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 3; ctx.strokeRect(20, 15, W - 40, H - 30);
-
-    // X CLOSE BUTTON (top right) - BIGGER on mobile
-    const closeBtnSize = isMobile ? 50 : 35;
-    ctx.fillStyle = '#aa3333';
-    ctx.fillRect(W - 25 - closeBtnSize, 20, closeBtnSize, closeBtnSize * 0.8);
-    ctx.strokeStyle = '#ff4444'; ctx.lineWidth = 2; ctx.strokeRect(W - 25 - closeBtnSize, 20, closeBtnSize, closeBtnSize * 0.8);
-    ctx.fillStyle = '#fff'; ctx.font = isMobile ? 'bold 28px Arial' : 'bold 20px Arial'; ctx.textAlign = 'center';
-    ctx.fillText('X', W - 25 - closeBtnSize/2, 20 + closeBtnSize * 0.55);
-
-    ctx.fillStyle = '#d4af37'; ctx.font = isMobile ? 'bold 22px Cinzel' : 'bold 18px Cinzel';
-    ctx.fillText('SHOP - Gold: ' + gold, W/2, isMobile ? 52 : 45);
-
-    // Mobile layout: single column, bigger buttons, vertical scroll only
+    // Mobile: FULLSCREEN shop
     if (isMobile) {
-      // Mobile-specific larger layout
-      const btnH = 48; // Much bigger button height
-      const btnW = W - 80; // Full width minus padding
-      const startX = 40;
-      const fontSize = 16;
-      const smallFontSize = 13;
+      // Full screen black background
+      ctx.fillStyle = 'rgba(0,0,0,0.98)'; ctx.fillRect(0, 0, W, H);
+      ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 4; ctx.strokeRect(2, 2, W - 4, H - 4);
 
-      // Apply scroll offset
+      // X CLOSE BUTTON - big and easy to tap
+      const closeBtnSize = 60;
+      ctx.fillStyle = '#aa3333';
+      ctx.fillRect(W - closeBtnSize - 10, 10, closeBtnSize, closeBtnSize);
+      ctx.strokeStyle = '#ff4444'; ctx.lineWidth = 3; ctx.strokeRect(W - closeBtnSize - 10, 10, closeBtnSize, closeBtnSize);
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 36px Arial'; ctx.textAlign = 'center';
+      ctx.fillText('X', W - closeBtnSize/2 - 10, 52);
+      shopButtons.push({ x: W - closeBtnSize - 10, y: 10, w: closeBtnSize, h: closeBtnSize, action: 'close' });
+
+      // Title with gold
+      ctx.fillStyle = '#d4af37'; ctx.font = 'bold 28px Cinzel';
+      ctx.fillText('SHOP', W/2 - 60, 50);
+      ctx.fillStyle = '#ffdd44'; ctx.font = 'bold 24px Cinzel';
+      ctx.fillText('Gold: ' + gold, W/2 + 60, 50);
+
+      // Mobile-specific LARGE layout
+      const btnH = 65; // Much bigger button height
+      const btnW = W - 40; // Almost full width
+      const startX = 20;
+      const fontSize = 22;
+      const smallFontSize = 16;
+
+      // Apply scroll offset with clipping
       ctx.save();
       ctx.beginPath();
-      ctx.rect(20, 60, W - 40, H - 90);
+      ctx.rect(0, 75, W, H - 85);
       ctx.clip();
 
-      let y = 70 - shopScrollY;
+      let y = 85 - shopScrollY;
 
-      // Helper to draw upgrade button - MOBILE version
+      // Helper to draw upgrade button - MOBILE FULLSCREEN version
       function drawUpgradeBtnMobile(name, label, color) {
         const u = upgrades[name];
         const maxed = u.level >= u.maxLevel;
@@ -5199,25 +5204,26 @@ function drawSkull(ctx, x, y, size, color) {
 
         ctx.fillStyle = maxed ? '#2a3a2a' : (canBuy ? color : '#2a2a3a');
         ctx.fillRect(startX, y, btnW, btnH);
-        ctx.strokeStyle = maxed ? '#4a4' : (canBuy ? '#6a6' : '#444');
-        ctx.lineWidth = 2; ctx.strokeRect(startX, y, btnW, btnH);
+        ctx.strokeStyle = maxed ? '#4a4' : (canBuy ? '#8f8' : '#555');
+        ctx.lineWidth = 3; ctx.strokeRect(startX, y, btnW, btnH);
 
         ctx.fillStyle = maxed ? '#6a6' : (canBuy ? '#fff' : '#666');
         ctx.font = 'bold ' + fontSize + 'px Cinzel'; ctx.textAlign = 'center';
-        ctx.fillText(label + levelText, startX + btnW/2, y + btnH/2 - 4);
+        ctx.fillText(label + levelText, startX + btnW/2, y + btnH/2 - 6);
         ctx.font = smallFontSize + 'px Cinzel';
-        ctx.fillText(cost, startX + btnW/2, y + btnH/2 + 14);
+        ctx.fillStyle = canBuy ? '#ffdd44' : (maxed ? '#6a6' : '#888');
+        ctx.fillText(cost, startX + btnW/2, y + btnH/2 + 18);
         ctx.textAlign = 'left';
 
         if (!maxed) shopButtons.push({ x: startX, y, w: btnW, h: btnH, action: 'upgrade', name });
-        y += btnH + 8;
+        y += btnH + 10;
       }
 
-      // Section header helper
+      // Section header helper - BIGGER
       function drawSectionHeader(text, color) {
-        ctx.fillStyle = color; ctx.font = 'bold 18px Cinzel'; ctx.textAlign = 'left';
-        ctx.fillText(text, startX, y + 20);
-        y += 32;
+        ctx.fillStyle = color; ctx.font = 'bold 24px Cinzel'; ctx.textAlign = 'left';
+        ctx.fillText(text, startX + 10, y + 28);
+        y += 40;
       }
 
       // CASTLE DEFENSES
@@ -5267,51 +5273,68 @@ function drawSkull(ctx, x, y, size, color) {
 
         ctx.fillStyle = a.unlocked ? '#2a4a2a' : (canBuy ? '#4a4a2a' : '#2a2a3a');
         ctx.fillRect(startX, y, btnW, btnH);
-        ctx.strokeStyle = a.unlocked ? '#4a4' : (canBuy ? '#aa6' : '#444');
-        ctx.lineWidth = 2; ctx.strokeRect(startX, y, btnW, btnH);
+        ctx.strokeStyle = a.unlocked ? '#4a4' : (canBuy ? '#cc8' : '#555');
+        ctx.lineWidth = 3; ctx.strokeRect(startX, y, btnW, btnH);
 
         ctx.fillStyle = a.unlocked ? '#6a6' : (canBuy ? '#fff' : '#666');
         ctx.font = 'bold ' + fontSize + 'px Cinzel'; ctx.textAlign = 'center';
-        ctx.fillText(name.toUpperCase(), startX + btnW/2, y + btnH/2 - 4);
+        ctx.fillText(name.toUpperCase(), startX + btnW/2, y + btnH/2 - 6);
         ctx.font = smallFontSize + 'px Cinzel';
-        ctx.fillText(status, startX + btnW/2, y + btnH/2 + 14);
+        ctx.fillStyle = canBuy ? '#ffdd44' : (a.unlocked ? '#88ff88' : '#888');
+        ctx.fillText(status, startX + btnW/2, y + btnH/2 + 18);
         ctx.textAlign = 'left';
 
         if (!a.unlocked) shopButtons.push({ x: startX, y, w: btnW, h: btnH, action: 'ability', name });
-        y += btnH + 8;
+        y += btnH + 10;
       });
 
+      // Add some padding at bottom
+      y += 20;
+
       // Store total content height for scrolling
-      const totalContentHeight = y + shopScrollY - 70;
+      const totalContentHeight = y + shopScrollY - 85;
 
       ctx.restore();
 
-      // Draw scroll indicators if needed
-      const visibleHeight = H - 90;
+      // Draw scroll indicators if needed - BIGGER arrows
+      const visibleHeight = H - 85;
       if (totalContentHeight > visibleHeight) {
         // Scroll up arrow
         if (shopScrollY > 0) {
           ctx.fillStyle = '#d4af37';
           ctx.beginPath();
-          ctx.moveTo(W/2 - 20, 70);
-          ctx.lineTo(W/2 + 20, 70);
-          ctx.lineTo(W/2, 55);
+          ctx.moveTo(W/2 - 30, 80);
+          ctx.lineTo(W/2 + 30, 80);
+          ctx.lineTo(W/2, 60);
           ctx.fill();
-          shopButtons.push({ x: W/2 - 40, y: 50, w: 80, h: 30, action: 'scrollUp' });
+          shopButtons.push({ x: W/2 - 50, y: 55, w: 100, h: 35, action: 'scrollUp' });
         }
         // Scroll down arrow
         if (shopScrollY < totalContentHeight - visibleHeight) {
           ctx.fillStyle = '#d4af37';
           ctx.beginPath();
-          ctx.moveTo(W/2 - 20, H - 25);
-          ctx.lineTo(W/2 + 20, H - 25);
-          ctx.lineTo(W/2, H - 10);
+          ctx.moveTo(W/2 - 30, H - 15);
+          ctx.lineTo(W/2 + 30, H - 15);
+          ctx.lineTo(W/2, H - 2);
           ctx.fill();
-          shopButtons.push({ x: W/2 - 40, y: H - 35, w: 80, h: 30, action: 'scrollDown' });
+          shopButtons.push({ x: W/2 - 50, y: H - 25, w: 100, h: 30, action: 'scrollDown' });
         }
       }
 
     } else {
+      // Desktop layout (original)
+      ctx.fillStyle = 'rgba(0,0,0,0.95)'; ctx.fillRect(20, 15, W - 40, H - 30);
+      ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 3; ctx.strokeRect(20, 15, W - 40, H - 30);
+
+      // X CLOSE BUTTON (top right)
+      ctx.fillStyle = '#aa3333';
+      ctx.fillRect(W - 60, 20, 35, 28);
+      ctx.strokeStyle = '#ff4444'; ctx.lineWidth = 2; ctx.strokeRect(W - 60, 20, 35, 28);
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 20px Arial'; ctx.textAlign = 'center';
+      ctx.fillText('X', W - 42, 40);
+
+      ctx.fillStyle = '#d4af37'; ctx.font = 'bold 18px Cinzel';
+      ctx.fillText('SHOP - Gold: ' + gold, W/2, 45);
       // Desktop layout (original)
       // Helper to draw upgrade button
       function drawUpgradeBtn(name, x, y, w, color) {
@@ -5424,15 +5447,16 @@ function drawSkull(ctx, x, y, size, color) {
 
   function handleShopClick(mx, my) {
     const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.innerWidth < 800;
-    // Mobile has much more content (single column)
-    const maxScroll = isMobile ? 1200 : Math.max(0, (Object.keys(upgrades).length * 34) - 220);
+    // Mobile has much more content (fullscreen single column with big buttons)
+    const maxScroll = isMobile ? 1800 : Math.max(0, (Object.keys(upgrades).length * 34) - 220);
 
     for (const btn of shopButtons) {
       if (mx > btn.x && mx < btn.x + btn.w && my > btn.y && my < btn.y + btn.h) {
         if (btn.action === 'upgrade') buyUpgrade(btn.name);
         else if (btn.action === 'ability') buyAbility(btn.name);
-        else if (btn.action === 'scrollUp') { shopScrollY = Math.max(0, shopScrollY - 120); }
-        else if (btn.action === 'scrollDown') { shopScrollY = Math.min(maxScroll, shopScrollY + 120); }
+        else if (btn.action === 'close') { showShop = false; }
+        else if (btn.action === 'scrollUp') { shopScrollY = Math.max(0, shopScrollY - 150); }
+        else if (btn.action === 'scrollDown') { shopScrollY = Math.min(maxScroll, shopScrollY + 150); }
         return true;
       }
     }
@@ -5444,7 +5468,8 @@ function drawSkull(ctx, x, y, size, color) {
     if (!showShop) return;
     ev.preventDefault();
     const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.innerWidth < 800;
-    const maxScroll = isMobile ? 1200 : Math.max(0, (Object.keys(upgrades).length * 34) - 220);
+    // Much more scroll space needed for fullscreen mobile with big buttons
+    const maxScroll = isMobile ? 1800 : Math.max(0, (Object.keys(upgrades).length * 34) - 220);
     shopScrollY = Math.max(0, Math.min(maxScroll, shopScrollY + ev.deltaY * 0.5));
   }, { passive: false });
 
@@ -5462,7 +5487,8 @@ function drawSkull(ctx, x, y, size, color) {
     const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.innerWidth < 800;
     if (!isMobile) return;
     const deltaY = shopTouchStartY - ev.touches[0].clientY;
-    const maxScroll = 1200;
+    // Much more scroll space for fullscreen mobile shop
+    const maxScroll = 1800;
     shopScrollY = Math.max(0, Math.min(maxScroll, shopTouchScrollStart + deltaY));
   }, { passive: true });
 
