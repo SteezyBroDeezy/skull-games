@@ -1442,7 +1442,7 @@ function drawSkull(ctx, x, y, size, color) {
   let lastSpawnX = 0;
 
   function update() {
-    tick++; score += 0.12; speed = 5 + Math.floor(score / 100) * 0.5;
+    tick++; score += 0.12; speed = 5 + Math.floor(score / 80) * 0.6; // Faster speed increase
     document.getElementById('runner-score').textContent = Math.floor(score);
     skull.vy += 0.7; skull.y += skull.vy;
     const skH = skull.ducking ? DUCK_H : SKULL_H;
@@ -1452,16 +1452,20 @@ function drawSkull(ctx, x, y, size, color) {
     lastSpawnX -= speed;
 
     // Spawn obstacles OR flyers - NEVER BOTH AT SAME POSITION
-    const baseGap = Math.max(320, 500 - score * 0.15);
-    const gapVariance = 100 + Math.random() * 180;
+    // Gap decreases as score increases (gets harder!)
+    const difficultyFactor = Math.min(score / 500, 1); // 0 to 1 over 500 points
+    const baseGap = Math.max(180, 350 - score * 0.25); // Starts smaller, shrinks faster
+    const gapVariance = 50 + Math.random() * (120 - difficultyFactor * 60); // Less variance at high scores
     const gap = baseGap + gapVariance;
 
     // Only spawn if enough distance from LAST SPAWN (ground OR flyer)
     if (lastSpawnX < W - gap) {
+      // Empty gap chance decreases as game progresses (5% at start, near 0% at high scores)
+      const emptyChance = Math.max(0.02, 0.08 - difficultyFactor * 0.06);
       const spawnRoll = Math.random();
 
-      if (spawnRoll < 0.25) {
-        // 25% = FLYER ONLY (no ground obstacle here)
+      if (spawnRoll < 0.30 + difficultyFactor * 0.1) {
+        // 30-40% = FLYER (increases with difficulty)
         const flyerRoll = Math.random();
         const spawnX = W + 60;
 
@@ -1490,9 +1494,11 @@ function drawSkull(ctx, x, y, size, color) {
           });
         }
         lastSpawnX = spawnX; // Track this spawn position
-      } else if (spawnRoll < 0.80) {
-        // 55% = GROUND OBSTACLE ONLY (no flyer here)
-        if (patternQueue.length === 0 && Math.random() < 0.35) {
+      } else if (spawnRoll < (1 - emptyChance)) {
+        // Ground obstacle (60-68% depending on flyer chance)
+        // More patterns at higher difficulty
+        const patternChance = 0.30 + difficultyFactor * 0.20; // 30-50%
+        if (patternQueue.length === 0 && Math.random() < patternChance) {
           patternQueue = spawnPattern();
         }
 
@@ -1506,10 +1512,9 @@ function drawSkull(ctx, x, y, size, color) {
           obstacles.push({ x: W + 20, y: GY - o.h, ...o });
           lastSpawnX = W + 20;
         }
-      }
-      // Remaining 20% = empty gap (breather)
-      else {
-        lastSpawnX = W; // Still track position even for gaps
+      } else {
+        // Small empty gap (only 2-8% of spawns)
+        lastSpawnX = W;
       }
     }
     obstacles.forEach(o => o.x -= speed);
