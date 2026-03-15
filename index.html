@@ -550,6 +550,7 @@ document.getElementById('installModal').addEventListener('click', function(e) { 
     </div>
     <div class="game-controls">
       <button class="btn-game" onclick="castleStart()">Start</button>
+      <button class="btn-game" id="castle-pause-btn" onclick="castleTogglePause()" style="background:#4a3a2a;">Pause</button>
       <button class="btn-game" onclick="castleShop()" style="background:#3a2a4a;">Shop</button>
       <button class="btn-game" onclick="castleSpeed()" style="background:#4a4a2a;">Speed</button>
       <button class="btn-game btn-fullscreen" onclick="toggleFullscreen('castle')">Fullscreen</button>
@@ -662,13 +663,7 @@ const AudioSystem = (function() {
     splat: () => { playNoise(0.15, 0.35); playTone(100, 0.1, 'square', 0.2); },
     castleHit: () => { playNoise(0.2, 0.4); playTone(80, 0.15, 'sawtooth', 0.3); },
     waveStart: () => { playTone(300, 0.1, 'square', 0.2); playTone(400, 0.1, 'square', 0.2, 0.1); playTone(500, 0.15, 'square', 0.25, 0.2); },
-    purchase: () => { playTone(800, 0.08, 'sine', 0.2); playTone(1000, 0.08, 'sine', 0.2, 0.08); playTone(1200, 0.1, 'sine', 0.25, 0.16); },
-    // Fun assign sounds for tower flags!
-    assignArcher: () => { playTone(440, 0.08, 'sine', 0.25); playTone(660, 0.1, 'sine', 0.3, 0.08); playTone(880, 0.12, 'sine', 0.25, 0.16); },
-    assignBomber: () => { playTone(200, 0.1, 'sawtooth', 0.3); playTone(300, 0.15, 'square', 0.35, 0.1); playNoise(0.1, 0.2, 0.2); },
-    assignStorm: () => { playTone(600, 0.05, 'sine', 0.2); playTone(800, 0.05, 'sine', 0.25, 0.05); playTone(1000, 0.08, 'sine', 0.3, 0.1); playTone(1200, 0.1, 'sine', 0.2, 0.15); },
-    assignKnight: () => { playTone(150, 0.1, 'sawtooth', 0.3); playTone(200, 0.15, 'square', 0.35, 0.1); playTone(250, 0.1, 'sawtooth', 0.25, 0.2); },
-    assignCatapult: () => { playTone(100, 0.15, 'sawtooth', 0.35); playTone(150, 0.1, 'square', 0.3, 0.15); playNoise(0.15, 0.3, 0.25); }
+    purchase: () => { playTone(800, 0.08, 'sine', 0.2); playTone(1000, 0.08, 'sine', 0.2, 0.08); playTone(1200, 0.1, 'sine', 0.25, 0.16); }
   };
 
   // Music generators
@@ -1300,22 +1295,59 @@ function drawSkull(ctx, x, y, size, color) {
     const skH = skull.ducking ? DUCK_H : SKULL_H;
     if (skull.y >= GY - skH) { skull.y = GY - skH; skull.vy = 0; skull.jumping = false; }
 
-    // Spawn ground obstacles with patterns - VARIED spacing
+    // Spawn obstacles with flyers INTEGRATED - flyers replace some ground obstacles
     const baseGap = Math.max(280, 480 - score * 0.2);
     const gapVariance = 80 + Math.random() * 150; // Random 80-230 extra pixels
     const gap = baseGap + gapVariance;
 
-    // Skip ground obstacle sometimes to make room for flying objects
-    const lastFlyer = fallingThings[fallingThings.length - 1];
-    const flyerNearby = lastFlyer && lastFlyer.x > W - 500;
-    const skipForFlyer = flyerNearby && Math.random() < 0.7; // 70% skip if flyer nearby
+    const lastObs = obstacles[obstacles.length - 1];
+    const lastFall = fallingThings[fallingThings.length - 1];
 
-    if (obstacles.length === 0 || obstacles[obstacles.length-1].x < W - gap) {
-      // 50% chance to spawn ground obstacle, 50% skip - more space for flyers
-      if (!skipForFlyer && Math.random() < 0.5) {
+    // Check if we should spawn something new
+    if (obstacles.length === 0 || (lastObs && lastObs.x < W - gap)) {
+      // Decide what to spawn: ground obstacle OR flyer (flyers replace ground obstacles)
+      const spawnRoll = Math.random();
+
+      // Safe spacing from other flyers
+      const flyerSpacing = Math.max(400, 500 - score * 0.08);
+      const canSpawnFlyer = !lastFall || lastFall.x < W - flyerSpacing;
+
+      // 30% chance to spawn flyer instead of ground obstacle (replaces ground obstacle)
+      // Flyers are placed IN BETWEEN ground obstacles
+      if (canSpawnFlyer && spawnRoll < 0.30) {
+        // Spawn a flyer in place of ground obstacle
+        const flyerRoll = Math.random();
+
+        if (flyerRoll < 0.35) {
+          // HIGH FLYER - must DUCK to avoid (bats/ghosts)
+          const flyType = Math.random() > 0.5 ? 'bat' : 'ghost';
+          const targetY = GY - DUCK_H - 5 - 22;
+          fallingThings.push({
+            x: W + 60, y: targetY - 40, targetY: targetY,
+            type: flyType, w: 45, h: 22, phase: 0, mustDuck: true
+          });
+          AudioSystem.SFX.swoosh();
+        } else if (flyerRoll < 0.50) {
+          // DIVE BOMBER - starts high, dives down!
+          const flyType = Math.random() > 0.5 ? 'hawk' : 'demon';
+          fallingThings.push({
+            x: W + 80, y: -60, targetY: GY - 45,
+            type: flyType, w: 40, h: 35, phase: 0, mustDuck: false, isDiver: true
+          });
+        } else {
+          // LOW FLYER - must JUMP to avoid (reapers/crows)
+          const flyType = Math.random() > 0.5 ? 'reaper' : 'crow';
+          fallingThings.push({
+            x: W + 60, y: -40, targetY: GY - 42,
+            type: flyType, w: 40, h: 38, phase: 0, mustDuck: false
+          });
+        }
+        // Skip ground obstacle - flyer takes its place
+      } else if (spawnRoll < 0.85) {
+        // 55% chance for ground obstacle (85-30=55)
         // Use pattern system for varied obstacle groupings
-        if (patternQueue.length === 0 && Math.random() < 0.4) {
-          // 40% chance to start a multi-obstacle pattern
+        if (patternQueue.length === 0 && Math.random() < 0.35) {
+          // 35% chance to start a multi-obstacle pattern
           patternQueue = spawnPattern();
         }
 
@@ -1328,55 +1360,10 @@ function drawSkull(ctx, x, y, size, color) {
           obstacles.push({ x: W + 20, y: GY - o.h, ...o });
         }
       }
+      // Remaining 15% = empty gap (gives player a breather)
     }
     obstacles.forEach(o => o.x -= speed);
     obstacles = obstacles.filter(o => o.x > -60);
-
-    // Spawn flying objects - must have BIG clear zone from ground obstacles
-    const lastFall = fallingThings[fallingThings.length - 1];
-
-    // Check for obstacles in a WIDE zone - need clearance before AND after for player to react
-    const obsNearSpawn = obstacles.find(o => o.x > W - 350 && o.x < W + 100);
-    const recentObs = obstacles.find(o => o.x > W - 250); // Recently spawned obstacle
-
-    // Only spawn if there's clear space - BIG buffer zone from obstacles
-    const clearZone = !obsNearSpawn && !recentObs;
-
-    // Safe spacing from other flyers - increased for fewer flyers
-    const flyerSpacing = Math.max(350, 420 - score * 0.06);
-    const safeFromFlying = !lastFall || lastFall.x < W - flyerSpacing;
-
-    // Flyer spawn rate - REDUCED for fewer flyers
-    const flyerSpawnRate = 0.006 + score * 0.00004;
-    if (safeFromFlying && clearZone && Math.random() < flyerSpawnRate) {
-      // Decide flyer type
-      const flyerRoll = Math.random();
-
-      if (flyerRoll < 0.30) {
-        // HIGH FLYER - must DUCK to avoid (bats/ghosts)
-        const flyType = Math.random() > 0.5 ? 'bat' : 'ghost';
-        const targetY = GY - DUCK_H - 5 - 22;
-        fallingThings.push({
-          x: W + 60, y: targetY - 40, targetY: targetY,
-          type: flyType, w: 45, h: 22, phase: 0, mustDuck: true
-        });
-        AudioSystem.SFX.swoosh();
-      } else if (flyerRoll < 0.45) {
-        // DIVE BOMBER - starts high, dives down!
-        const flyType = Math.random() > 0.5 ? 'hawk' : 'demon';
-        fallingThings.push({
-          x: W + 80, y: -60, targetY: GY - 45,
-          type: flyType, w: 40, h: 35, phase: 0, mustDuck: false, isDiver: true
-        });
-      } else {
-        // LOW FLYER - must JUMP to avoid (reapers/crows)
-        const flyType = Math.random() > 0.5 ? 'reaper' : 'crow';
-        fallingThings.push({
-          x: W + 60, y: -40, targetY: GY - 42,
-          type: flyType, w: 40, h: 38, phase: 0, mustDuck: false
-        });
-      }
-    }
 
     fallingThings.forEach(f => {
       f.phase += 0.12;
@@ -3713,21 +3700,11 @@ function drawSkull(ctx, x, y, size, color) {
   let oilTimer = 0;
 
   // SPECIAL ABILITIES - Unlock first, then costs gold each use + cooldown
-  // Price increases by 5g each use!
   const abilities = {
-    arrowRain: { cooldown: 0, maxCooldown: 600, unlockCost: 80, useCost: 15, baseUseCost: 15, useCount: 0, unlocked: false, desc: 'Arrow rain (15g)' },
-    lightning: { cooldown: 0, maxCooldown: 900, unlockCost: 150, useCost: 25, baseUseCost: 25, useCount: 0, unlocked: false, desc: 'Storm (25g)' },
-    boulder: { cooldown: 0, maxCooldown: 1500, unlockCost: 250, useCost: 200, baseUseCost: 200, useCount: 0, unlocked: false, desc: 'Boulder (200g)' }
+    arrowRain: { cooldown: 0, maxCooldown: 600, unlockCost: 80, useCost: 15, unlocked: false, desc: 'Arrow rain (15g)' },
+    lightning: { cooldown: 0, maxCooldown: 900, unlockCost: 150, useCost: 25, unlocked: false, desc: 'Storm (25g)' },
+    boulder: { cooldown: 0, maxCooldown: 1500, unlockCost: 250, useCost: 200, unlocked: false, desc: 'Boulder (200g)' }
   };
-
-  // Track repair uses for increasing cost
-  let repairCount = 0;
-  const REPAIR_BASE_COST = 50;
-  const REPAIR_COST_INCREASE = 15; // Each repair costs 15g more
-
-  // Track deaths for hints
-  let deathCount = 0;
-  let lastDeathWave = 0;
 
   // DEFENDER TYPES - for assignments
   let archerTimers = []; // Each archer has own timer for staggered firing
@@ -3798,15 +3775,7 @@ function drawSkull(ctx, x, y, size, color) {
     bomberUnits = []; stormCount = 0; knightUnits = []; catapultCount = 0;
     waveSpawnTimer = 0; waveEnemiesLeft = []; stormZapTimer = 0;
     Object.keys(upgrades).forEach(k => upgrades[k].level = 0);
-    // Reset abilities - restore original costs!
-    Object.keys(abilities).forEach(k => {
-      abilities[k].cooldown = 0;
-      abilities[k].unlocked = false;
-      abilities[k].useCost = abilities[k].baseUseCost; // Reset to base cost
-      abilities[k].useCount = 0;
-    });
-    // Reset repair cost
-    repairCount = 0;
+    Object.keys(abilities).forEach(k => { abilities[k].cooldown = 0; abilities[k].unlocked = false; });
     oilTimer = 0;
     document.getElementById('castle-over').classList.remove('show');
     updateHUD();
@@ -3986,13 +3955,8 @@ function drawSkull(ctx, x, y, size, color) {
       particles.push({ x: W/2, y: H/2, vx: 0, vy: 0, life: 60, text: 'Need ' + a.useCost + 'g!', color: '#ff4444', big: true });
       return;
     }
-    const costPaid = a.useCost;
     gold -= a.useCost;
     a.cooldown = a.maxCooldown;
-    // Increase cost for next use! (+5g for arrows/storm, +25g for boulder)
-    const priceIncrease = (name === 'boulder') ? 25 : 5;
-    a.useCost += priceIncrease;
-    a.useCount++;
     updateHUD();
 
     if (name === 'arrowRain') {
@@ -5071,15 +5035,8 @@ function drawSkull(ctx, x, y, size, color) {
           ctx.beginPath(); ctx.arc(p.x - 5, p.y + 26, 3, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
         }
         ctx.fillStyle = p.color;
-        // Bigger, clearer fonts - no pixelation
-        ctx.font = p.big ? 'bold 24px Arial, sans-serif' : 'bold 14px Arial, sans-serif';
-        // Add text shadow for better readability
-        ctx.shadowColor = '#000';
-        ctx.shadowBlur = 4;
-        ctx.shadowOffsetX = 2;
-        ctx.shadowOffsetY = 2;
+        ctx.font = p.big ? 'bold 18px Cinzel' : 'bold 12px Cinzel';
         ctx.textAlign = 'center'; ctx.fillText(p.text, p.x, p.y + 4); ctx.textAlign = 'left';
-        ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
       } else {
         ctx.fillStyle = p.color;
         ctx.beginPath(); ctx.arc(p.x, p.y, p.size/2, 0, Math.PI * 2); ctx.fill();
@@ -5194,43 +5151,38 @@ function drawSkull(ctx, x, y, size, color) {
     // Detect mobile for bigger shop items
     const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.innerWidth < 800;
 
-    // Mobile: FULLSCREEN shop
+    ctx.fillStyle = 'rgba(0,0,0,0.95)'; ctx.fillRect(20, 15, W - 40, H - 30);
+    ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 3; ctx.strokeRect(20, 15, W - 40, H - 30);
+
+    // X CLOSE BUTTON (top right) - BIGGER on mobile
+    const closeBtnSize = isMobile ? 50 : 35;
+    ctx.fillStyle = '#aa3333';
+    ctx.fillRect(W - 25 - closeBtnSize, 20, closeBtnSize, closeBtnSize * 0.8);
+    ctx.strokeStyle = '#ff4444'; ctx.lineWidth = 2; ctx.strokeRect(W - 25 - closeBtnSize, 20, closeBtnSize, closeBtnSize * 0.8);
+    ctx.fillStyle = '#fff'; ctx.font = isMobile ? 'bold 28px Arial' : 'bold 20px Arial'; ctx.textAlign = 'center';
+    ctx.fillText('X', W - 25 - closeBtnSize/2, 20 + closeBtnSize * 0.55);
+
+    ctx.fillStyle = '#d4af37'; ctx.font = isMobile ? 'bold 22px Cinzel' : 'bold 18px Cinzel';
+    ctx.fillText('SHOP - Gold: ' + gold, W/2, isMobile ? 52 : 45);
+
+    // Mobile layout: single column, EXTRA LARGE buttons, vertical scroll only
     if (isMobile) {
-      // Full screen black background
-      ctx.fillStyle = 'rgba(0,0,0,0.98)'; ctx.fillRect(0, 0, W, H);
-      ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 4; ctx.strokeRect(2, 2, W - 4, H - 4);
-
-      // X CLOSE BUTTON - big and easy to tap
-      const closeBtnSize = 60;
-      ctx.fillStyle = '#aa3333';
-      ctx.fillRect(W - closeBtnSize - 10, 10, closeBtnSize, closeBtnSize);
-      ctx.strokeStyle = '#ff4444'; ctx.lineWidth = 3; ctx.strokeRect(W - closeBtnSize - 10, 10, closeBtnSize, closeBtnSize);
-      ctx.fillStyle = '#fff'; ctx.font = 'bold 36px Arial'; ctx.textAlign = 'center';
-      ctx.fillText('X', W - closeBtnSize/2 - 10, 52);
-      shopButtons.push({ x: W - closeBtnSize - 10, y: 10, w: closeBtnSize, h: closeBtnSize, action: 'close' });
-
-      // Title with gold
-      ctx.fillStyle = '#d4af37'; ctx.font = 'bold 28px Cinzel';
-      ctx.fillText('SHOP', W/2 - 60, 50);
-      ctx.fillStyle = '#ffdd44'; ctx.font = 'bold 24px Cinzel';
-      ctx.fillText('Gold: ' + gold, W/2 + 60, 50);
-
-      // Mobile-specific LARGE layout
-      const btnH = 65; // Much bigger button height
-      const btnW = W - 40; // Almost full width
-      const startX = 20;
-      const fontSize = 22;
+      // Mobile-specific EXTRA LARGE layout for easy tapping
+      const btnH = 70; // Extra large button height
+      const btnW = W - 60; // Full width minus small padding (no horizontal scroll)
+      const startX = 30;
+      const fontSize = 20;
       const smallFontSize = 16;
 
-      // Apply scroll offset with clipping
+      // Apply scroll offset
       ctx.save();
       ctx.beginPath();
-      ctx.rect(0, 75, W, H - 85);
+      ctx.rect(20, 60, W - 40, H - 90);
       ctx.clip();
 
-      let y = 85 - shopScrollY;
+      let y = 70 - shopScrollY;
 
-      // Helper to draw upgrade button - MOBILE FULLSCREEN version
+      // Helper to draw upgrade button - MOBILE version
       function drawUpgradeBtnMobile(name, label, color) {
         const u = upgrades[name];
         const maxed = u.level >= u.maxLevel;
@@ -5240,25 +5192,24 @@ function drawSkull(ctx, x, y, size, color) {
 
         ctx.fillStyle = maxed ? '#2a3a2a' : (canBuy ? color : '#2a2a3a');
         ctx.fillRect(startX, y, btnW, btnH);
-        ctx.strokeStyle = maxed ? '#4a4' : (canBuy ? '#8f8' : '#555');
-        ctx.lineWidth = 3; ctx.strokeRect(startX, y, btnW, btnH);
+        ctx.strokeStyle = maxed ? '#4a4' : (canBuy ? '#6a6' : '#444');
+        ctx.lineWidth = 2; ctx.strokeRect(startX, y, btnW, btnH);
 
         ctx.fillStyle = maxed ? '#6a6' : (canBuy ? '#fff' : '#666');
         ctx.font = 'bold ' + fontSize + 'px Cinzel'; ctx.textAlign = 'center';
-        ctx.fillText(label + levelText, startX + btnW/2, y + btnH/2 - 6);
+        ctx.fillText(label + levelText, startX + btnW/2, y + btnH/2 - 4);
         ctx.font = smallFontSize + 'px Cinzel';
-        ctx.fillStyle = canBuy ? '#ffdd44' : (maxed ? '#6a6' : '#888');
-        ctx.fillText(cost, startX + btnW/2, y + btnH/2 + 18);
+        ctx.fillText(cost, startX + btnW/2, y + btnH/2 + 14);
         ctx.textAlign = 'left';
 
         if (!maxed) shopButtons.push({ x: startX, y, w: btnW, h: btnH, action: 'upgrade', name });
-        y += btnH + 10;
+        y += btnH + 12; // Extra spacing between buttons
       }
 
-      // Section header helper - BIGGER
+      // Section header helper - LARGER for mobile
       function drawSectionHeader(text, color) {
-        ctx.fillStyle = color; ctx.font = 'bold 24px Cinzel'; ctx.textAlign = 'left';
-        ctx.fillText(text, startX + 10, y + 28);
+        ctx.fillStyle = color; ctx.font = 'bold 22px Cinzel'; ctx.textAlign = 'left';
+        ctx.fillText(text, startX, y + 26);
         y += 40;
       }
 
@@ -5267,23 +5218,6 @@ function drawSkull(ctx, x, y, size, color) {
       drawUpgradeBtnMobile('walls', 'WALLS', '#3a4a3a');
       drawUpgradeBtnMobile('moat', 'MOAT', '#3a4a5a');
       drawUpgradeBtnMobile('oilPots', 'OIL POTS', '#5a3a2a');
-
-      // REPAIR - special button with dynamic cost!
-      const repairCostShop = REPAIR_BASE_COST + (repairCount * REPAIR_COST_INCREASE);
-      const canRepair = gold >= repairCostShop && castleHP < maxHP;
-      ctx.fillStyle = canRepair ? '#3a5a3a' : '#2a2a3a';
-      ctx.fillRect(startX, y, btnW, btnH);
-      ctx.strokeStyle = canRepair ? '#8f8' : '#555';
-      ctx.lineWidth = 3; ctx.strokeRect(startX, y, btnW, btnH);
-      ctx.fillStyle = canRepair ? '#fff' : '#666';
-      ctx.font = 'bold ' + fontSize + 'px Cinzel'; ctx.textAlign = 'center';
-      ctx.fillText('REPAIR +25 HP', startX + btnW/2, y + btnH/2 - 6);
-      ctx.font = smallFontSize + 'px Cinzel';
-      ctx.fillStyle = canRepair ? '#88ff88' : '#888';
-      ctx.fillText(repairCostShop + 'g (price increases!)', startX + btnW/2, y + btnH/2 + 18);
-      ctx.textAlign = 'left';
-      shopButtons.push({ x: startX, y, w: btnW, h: btnH, action: 'upgrade', name: 'repair' });
-      y += btnH + 10;
 
       // TRAINING
       drawSectionHeader('TRAINING', '#88ffff');
@@ -5326,68 +5260,51 @@ function drawSkull(ctx, x, y, size, color) {
 
         ctx.fillStyle = a.unlocked ? '#2a4a2a' : (canBuy ? '#4a4a2a' : '#2a2a3a');
         ctx.fillRect(startX, y, btnW, btnH);
-        ctx.strokeStyle = a.unlocked ? '#4a4' : (canBuy ? '#cc8' : '#555');
-        ctx.lineWidth = 3; ctx.strokeRect(startX, y, btnW, btnH);
+        ctx.strokeStyle = a.unlocked ? '#4a4' : (canBuy ? '#aa6' : '#444');
+        ctx.lineWidth = 2; ctx.strokeRect(startX, y, btnW, btnH);
 
         ctx.fillStyle = a.unlocked ? '#6a6' : (canBuy ? '#fff' : '#666');
         ctx.font = 'bold ' + fontSize + 'px Cinzel'; ctx.textAlign = 'center';
-        ctx.fillText(name.toUpperCase(), startX + btnW/2, y + btnH/2 - 6);
+        ctx.fillText(name.toUpperCase(), startX + btnW/2, y + btnH/2 - 4);
         ctx.font = smallFontSize + 'px Cinzel';
-        ctx.fillStyle = canBuy ? '#ffdd44' : (a.unlocked ? '#88ff88' : '#888');
-        ctx.fillText(status, startX + btnW/2, y + btnH/2 + 18);
+        ctx.fillText(status, startX + btnW/2, y + btnH/2 + 14);
         ctx.textAlign = 'left';
 
         if (!a.unlocked) shopButtons.push({ x: startX, y, w: btnW, h: btnH, action: 'ability', name });
-        y += btnH + 10;
+        y += btnH + 12; // Extra spacing between buttons
       });
 
-      // Add some padding at bottom
-      y += 20;
-
       // Store total content height for scrolling
-      const totalContentHeight = y + shopScrollY - 85;
+      const totalContentHeight = y + shopScrollY - 70;
 
       ctx.restore();
 
-      // Draw scroll indicators if needed - BIGGER arrows
-      const visibleHeight = H - 85;
+      // Draw scroll indicators if needed
+      const visibleHeight = H - 90;
       if (totalContentHeight > visibleHeight) {
         // Scroll up arrow
         if (shopScrollY > 0) {
           ctx.fillStyle = '#d4af37';
           ctx.beginPath();
-          ctx.moveTo(W/2 - 30, 80);
-          ctx.lineTo(W/2 + 30, 80);
-          ctx.lineTo(W/2, 60);
+          ctx.moveTo(W/2 - 20, 70);
+          ctx.lineTo(W/2 + 20, 70);
+          ctx.lineTo(W/2, 55);
           ctx.fill();
-          shopButtons.push({ x: W/2 - 50, y: 55, w: 100, h: 35, action: 'scrollUp' });
+          shopButtons.push({ x: W/2 - 40, y: 50, w: 80, h: 30, action: 'scrollUp' });
         }
         // Scroll down arrow
         if (shopScrollY < totalContentHeight - visibleHeight) {
           ctx.fillStyle = '#d4af37';
           ctx.beginPath();
-          ctx.moveTo(W/2 - 30, H - 15);
-          ctx.lineTo(W/2 + 30, H - 15);
-          ctx.lineTo(W/2, H - 2);
+          ctx.moveTo(W/2 - 20, H - 25);
+          ctx.lineTo(W/2 + 20, H - 25);
+          ctx.lineTo(W/2, H - 10);
           ctx.fill();
-          shopButtons.push({ x: W/2 - 50, y: H - 25, w: 100, h: 30, action: 'scrollDown' });
+          shopButtons.push({ x: W/2 - 40, y: H - 35, w: 80, h: 30, action: 'scrollDown' });
         }
       }
 
     } else {
-      // Desktop layout (original)
-      ctx.fillStyle = 'rgba(0,0,0,0.95)'; ctx.fillRect(20, 15, W - 40, H - 30);
-      ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 3; ctx.strokeRect(20, 15, W - 40, H - 30);
-
-      // X CLOSE BUTTON (top right)
-      ctx.fillStyle = '#aa3333';
-      ctx.fillRect(W - 60, 20, 35, 28);
-      ctx.strokeStyle = '#ff4444'; ctx.lineWidth = 2; ctx.strokeRect(W - 60, 20, 35, 28);
-      ctx.fillStyle = '#fff'; ctx.font = 'bold 20px Arial'; ctx.textAlign = 'center';
-      ctx.fillText('X', W - 42, 40);
-
-      ctx.fillStyle = '#d4af37'; ctx.font = 'bold 18px Cinzel';
-      ctx.fillText('SHOP - Gold: ' + gold, W/2, 45);
       // Desktop layout (original)
       // Helper to draw upgrade button
       function drawUpgradeBtn(name, x, y, w, color) {
@@ -5415,23 +5332,12 @@ function drawSkull(ctx, x, y, size, color) {
       const col1 = 35, col2 = 125;
       const btnW = 145;
 
-      // ROW 1: Castle Defenses + REPAIR
+      // ROW 1: Castle Defenses
       ctx.fillStyle = '#888'; ctx.font = 'bold 11px Cinzel'; ctx.textAlign = 'left';
       ctx.fillText('CASTLE:', col1, y + 17);
       drawUpgradeBtn('walls', col2, y, btnW, '#3a4a3a');
       drawUpgradeBtn('moat', col2 + btnW + 5, y, btnW, '#3a4a5a');
-      // REPAIR button with dynamic cost
-      const repairCostDesk = REPAIR_BASE_COST + (repairCount * REPAIR_COST_INCREASE);
-      const canRepairDesk = gold >= repairCostDesk && castleHP < maxHP;
-      ctx.fillStyle = canRepairDesk ? '#3a5a3a' : '#2a2a3a';
-      ctx.fillRect(col2 + btnW*2 + 10, y, btnW, 26);
-      ctx.strokeStyle = canRepairDesk ? '#6a6' : '#444';
-      ctx.lineWidth = 1; ctx.strokeRect(col2 + btnW*2 + 10, y, btnW, 26);
-      ctx.fillStyle = canRepairDesk ? '#ddd' : '#555';
-      ctx.font = '10px Cinzel'; ctx.textAlign = 'center';
-      ctx.fillText('REPAIR +25HP ' + repairCostDesk + 'g', col2 + btnW*2 + 10 + btnW/2, y + 17);
-      ctx.textAlign = 'left';
-      shopButtons.push({ x: col2 + btnW*2 + 10, y, w: btnW, h: 26, action: 'upgrade', name: 'repair' });
+      drawUpgradeBtn('oilPots', col2 + btnW*2 + 10, y, btnW, '#5a3a2a');
       y += 32;
 
       // ROW 2: Training
@@ -5511,16 +5417,15 @@ function drawSkull(ctx, x, y, size, color) {
 
   function handleShopClick(mx, my) {
     const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.innerWidth < 800;
-    // Mobile has much more content (fullscreen single column with big buttons)
-    const maxScroll = isMobile ? 1800 : Math.max(0, (Object.keys(upgrades).length * 34) - 220);
+    // Mobile has much more content (single column)
+    const maxScroll = isMobile ? 1200 : Math.max(0, (Object.keys(upgrades).length * 34) - 220);
 
     for (const btn of shopButtons) {
       if (mx > btn.x && mx < btn.x + btn.w && my > btn.y && my < btn.y + btn.h) {
         if (btn.action === 'upgrade') buyUpgrade(btn.name);
         else if (btn.action === 'ability') buyAbility(btn.name);
-        else if (btn.action === 'close') { showShop = false; }
-        else if (btn.action === 'scrollUp') { shopScrollY = Math.max(0, shopScrollY - 150); }
-        else if (btn.action === 'scrollDown') { shopScrollY = Math.min(maxScroll, shopScrollY + 150); }
+        else if (btn.action === 'scrollUp') { shopScrollY = Math.max(0, shopScrollY - 120); }
+        else if (btn.action === 'scrollDown') { shopScrollY = Math.min(maxScroll, shopScrollY + 120); }
         return true;
       }
     }
@@ -5532,8 +5437,7 @@ function drawSkull(ctx, x, y, size, color) {
     if (!showShop) return;
     ev.preventDefault();
     const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.innerWidth < 800;
-    // Much more scroll space needed for fullscreen mobile with big buttons
-    const maxScroll = isMobile ? 1800 : Math.max(0, (Object.keys(upgrades).length * 34) - 220);
+    const maxScroll = isMobile ? 1200 : Math.max(0, (Object.keys(upgrades).length * 34) - 220);
     shopScrollY = Math.max(0, Math.min(maxScroll, shopScrollY + ev.deltaY * 0.5));
   }, { passive: false });
 
@@ -5551,73 +5455,17 @@ function drawSkull(ctx, x, y, size, color) {
     const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.innerWidth < 800;
     if (!isMobile) return;
     const deltaY = shopTouchStartY - ev.touches[0].clientY;
-    // Much more scroll space for fullscreen mobile shop
-    const maxScroll = 1800;
+    const maxScroll = 1200;
     shopScrollY = Math.max(0, Math.min(maxScroll, shopTouchScrollStart + deltaY));
   }, { passive: true });
 
   function gameOver() {
     state = 'over'; cancelAnimationFrame(raf);
     AudioSystem.stopMusic();
-    deathCount++;
-    lastDeathWave = wave;
     document.getElementById('castle-over').classList.add('show');
     document.getElementById('castle-final').textContent = 'Wave ' + wave + ' - ' + kills + ' kills - ' + gold + ' gold';
-    // Show helpful hints based on what wave they died on
-    const hint = getDeathHint(wave, deathCount);
-    document.getElementById('castle-funny').textContent = hint;
+    document.getElementById('castle-funny').textContent = getDeathJoke();
     addToLeaderboard('castle', wave * 100 + kills);
-  }
-
-  function getDeathHint(w, deaths) {
-    // Early game tips
-    if (w <= 3) {
-      const tips = [
-        'TIP: Grab small skeletons and throw them HIGH to kill them!',
-        'TIP: Click the SHOP button to buy upgrades between waves!',
-        'TIP: Throw skeletons INTO your castle to capture & train them!',
-        'TIP: Buy WALLS first - they give you more HP!'
-      ];
-      return tips[deaths % tips.length];
-    }
-    // Mid game tips
-    if (w <= 8) {
-      const tips = [
-        'TIP: Buy TRAINING to convert captured skeletons into soldiers!',
-        'TIP: Assign trained skeletons to towers by clicking the FLAGS!',
-        'TIP: ARCHERS (green flag) are great for clearing waves!',
-        'TIP: Click on BIG skeletons to stun them - they say funny things!'
-      ];
-      return tips[deaths % tips.length];
-    }
-    // Giants/Brutes tips
-    if (w <= 12) {
-      const tips = [
-        'TIP: GIANTS & BRUTES cant be grabbed - click to stun them!',
-        'TIP: BOMBERS (red tower) do MASSIVE damage - click them to explode!',
-        'TIP: Bombers hurt ALL enemies including brutes & titans!',
-        'TIP: STORM (blue tower) damages groups but some are immune!'
-      ];
-      return tips[deaths % tips.length];
-    }
-    // Late game tips
-    if (w <= 16) {
-      const tips = [
-        'TIP: SHIELDBEARERS block arrows - use Storm or Bombers!',
-        'TIP: MAGES resist storm - use Arrows or Bombers on them!',
-        'TIP: TITANS resist BOTH arrows AND storm - use BOMBERS!',
-        'TIP: Buy BOULDER ability - it kills everything on screen!'
-      ];
-      return tips[deaths % tips.length];
-    }
-    // Super late game
-    const tips = [
-      'TIP: JUGGERNAUTS are immune to arrows AND storm - BOMBERS only!',
-      'TIP: Upgrade BOMBER POWER for bigger explosions!',
-      'TIP: REPAIR costs more each time - save gold for emergencies!',
-      'TIP: Mix all tower types for best coverage!'
-    ];
-    return tips[deaths % tips.length];
   }
 
   function loop() {
@@ -5650,25 +5498,19 @@ function drawSkull(ctx, x, y, size, color) {
 
   function buyUpgrade(name) {
     const u = upgrades[name];
-    // Special handling for repair - price increases each time!
+    // Special handling for repair - always costs 50g, heals 25 HP, can buy unlimited times
     if (u.isRepair) {
-      const repairCost = REPAIR_BASE_COST + (repairCount * REPAIR_COST_INCREASE);
-      if (gold < repairCost) {
-        particles.push({ x: W/2, y: H/2, vx: 0, vy: -1, life: 40, text: 'Need ' + repairCost + 'g to repair!', color: '#ff4444', big: true });
-        return;
-      }
+      if (gold < 50) return;
       if (castleHP >= maxHP) {
         particles.push({ x: W/2, y: H/2, vx: 0, vy: -1, life: 40, text: 'Castle is full HP!', color: '#ffaa00', big: true });
         return;
       }
-      gold -= repairCost;
-      repairCount++; // Increase cost for next repair
+      gold -= 50;
       const healAmount = Math.min(25, maxHP - castleHP);
       castleHP += healAmount;
       AudioSystem.SFX.purchase();
       updateHUD();
-      const nextCost = REPAIR_BASE_COST + (repairCount * REPAIR_COST_INCREASE);
-      particles.push({ x: W/2, y: H/2, vx: 0, vy: -1, life: 60, text: '+' + healAmount + ' HP! Next repair: ' + nextCost + 'g', color: '#88ff88', big: true });
+      particles.push({ x: W/2, y: H/2, vx: 0, vy: -1, life: 60, text: '+' + healAmount + ' HP repaired!', color: '#88ff88', big: true });
       return;
     }
     if (u.level >= u.maxLevel || gold < u.cost[u.level]) return;
@@ -5718,33 +5560,34 @@ function drawSkull(ctx, x, y, size, color) {
       }
     }
 
-    // TOWER FLAG CLICKS - MUCH BIGGER for mobile/touchscreen!
-    const isMobileFlag = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+    // TOWER FLAG CLICKS - each tower is 32px apart starting at castleLeft + 60
+    // EXTRA LARGE HIT AREAS for mobile - covers entire tower area
+    const isMobileTower = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.innerWidth < 800;
     const castleLeft = CASTLE_X - 120;
-    const towerWidth = isMobileFlag ? 65 : 50;  // Much wider on mobile
-    const towerSpacing = 32;
-    let towerX = castleLeft + 50;
-    const flagClickY = GROUND - 185;
-    const flagClickRange = isMobileFlag ? 55 : 40;  // Much taller on mobile
+    const towerWidth = isMobileTower ? 65 : 45;  // Much wider on mobile
+    const towerSpacing = isMobileTower ? 38 : 32;  // More spacing
+    let towerX = castleLeft + (isMobileTower ? 40 : 50);  // Start position
+    const flagClickY = GROUND - 165;  // Lower center point for easier tapping
+    const flagClickRange = isMobileTower ? 70 : 35;  // Much taller click area on mobile
 
     // Archer tower flag (GREEN) - FAR LEFT position
     const archerTowerClickX = castleLeft + 5;
     if (upgrades.archerTower.level > 0 && trainedSupply > 0) {
-      if (mouseX > archerTowerClickX - 10 && mouseX < archerTowerClickX + towerWidth && mouseY > flagClickY - flagClickRange && mouseY < flagClickY + flagClickRange) {
+      if (mouseX > archerTowerClickX && mouseX < archerTowerClickX + towerWidth && mouseY > flagClickY - flagClickRange && mouseY < flagClickY + flagClickRange) {
         trainedSupply--;
+        // Add archer with random timer offset so they fire at different times
         archerTimers.push({ timer: Math.floor(Math.random() * ARCHER_FIRE_RATE), offset: Math.floor(Math.random() * 60) - 30 });
-        AudioSystem.SFX.assignArcher();
         particles.push({ x: W/2, y: H/2, vx: 0, vy: -1, life: 60, text: 'Archer assigned! (' + archerTimers.length + ')', color: '#44ff44', big: true });
         return;
       }
+      // Don't advance towerX - archer is separate
     }
 
     // Bomber tower flag (RED)
     if (upgrades.bomberBros.level > 0 && trainedSupply > 0) {
-      if (mouseX > towerX - 10 && mouseX < towerX + towerWidth && mouseY > flagClickY - flagClickRange && mouseY < flagClickY + flagClickRange) {
+      if (mouseX > towerX && mouseX < towerX + towerWidth && mouseY > flagClickY - flagClickRange && mouseY < flagClickY + flagClickRange) {
         trainedSupply--;
         bomberUnits.push({ x: CASTLE_X - 100, y: GROUND });
-        AudioSystem.SFX.assignBomber();
         particles.push({ x: W/2, y: H/2, vx: 0, vy: 0, life: 40, text: 'BOMBER DEPLOYED!', color: '#ff6644', big: true });
         return;
       }
@@ -5753,9 +5596,8 @@ function drawSkull(ctx, x, y, size, color) {
 
     // Storm tower flag (BLUE)
     if (upgrades.stormCaller.level > 0 && trainedSupply > 0) {
-      if (mouseX > towerX - 10 && mouseX < towerX + towerWidth && mouseY > flagClickY - flagClickRange && mouseY < flagClickY + flagClickRange) {
+      if (mouseX > towerX && mouseX < towerX + towerWidth && mouseY > flagClickY - flagClickRange && mouseY < flagClickY + flagClickRange) {
         trainedSupply--; stormCount++;
-        AudioSystem.SFX.assignStorm();
         particles.push({ x: W/2, y: H/2, vx: 0, vy: 0, life: 40, text: 'Storm Caller assigned! (' + stormCount + ')', color: '#4488ff', big: true });
         return;
       }
@@ -5764,10 +5606,9 @@ function drawSkull(ctx, x, y, size, color) {
 
     // Knight tower flag (BLACK)
     if (upgrades.knights.level > 0 && trainedSupply > 0) {
-      if (mouseX > towerX - 10 && mouseX < towerX + towerWidth && mouseY > flagClickY - flagClickRange && mouseY < flagClickY + flagClickRange) {
+      if (mouseX > towerX && mouseX < towerX + towerWidth && mouseY > flagClickY - flagClickRange && mouseY < flagClickY + flagClickRange) {
         trainedSupply--;
         knightUnits.push({ x: CASTLE_X - 80, y: GROUND, hp: 5, attackTimer: 0, returning: false });
-        AudioSystem.SFX.assignKnight();
         particles.push({ x: W/2, y: H/2, vx: 0, vy: 0, life: 40, text: 'KNIGHT CHARGES!', color: '#ffdd44', big: true });
         return;
       }
@@ -5776,49 +5617,42 @@ function drawSkull(ctx, x, y, size, color) {
 
     // Catapult tower flag (PURPLE)
     if (upgrades.catapult.level > 0 && trainedSupply > 0) {
-      if (mouseX > towerX - 10 && mouseX < towerX + towerWidth && mouseY > flagClickY - flagClickRange && mouseY < flagClickY + flagClickRange) {
+      if (mouseX > towerX && mouseX < towerX + towerWidth && mouseY > flagClickY - flagClickRange && mouseY < flagClickY + flagClickRange) {
         trainedSupply--; catapultCount++;
-        AudioSystem.SFX.assignCatapult();
         particles.push({ x: W/2, y: H/2, vx: 0, vy: 0, life: 40, text: 'Catapult manned! (' + catapultCount + ')', color: '#9944ff', big: true });
         return;
       }
     }
 
-    // Check if clicking a bomber unit to explode it - 4X BIGGER AND STRONGER!
+    // Check if clicking a bomber unit to explode it
     for (let i = bomberUnits.length - 1; i >= 0; i--) {
       const b = bomberUnits[i];
       if (mouseX > b.x - 25 && mouseX < b.x + 25 && mouseY > b.y - 55 && mouseY < b.y) {
         const explodeX = b.x, explodeY = b.y - 20;
-        // Bomber damage: 4X base damage! (60 base + 32 per level)
-        const bomberDamage = 60 + upgrades.bomberPower.level * 32;
-        // Bomber blast radius: 4X bigger! (400 base + 80 per level)
-        const blastRadius = 400 + upgrades.bomberPower.level * 80;
+        // Bomber damage: base 15 + 8 per upgrade level (much stronger!)
+        const bomberDamage = 15 + upgrades.bomberPower.level * 8;
+        const blastRadius = 100 + upgrades.bomberPower.level * 20;
         enemies.forEach(e => {
-          // Bombers can hurt ALL enemies including brutes (red demons)!
           if (e.state !== 'dead' && Math.hypot(e.x + e.size/2 - explodeX, e.y - e.size/2 - explodeY) < blastRadius) {
             e.hp -= bomberDamage;
             if (e.hp <= 0) killEnemy(e, false);
           }
         });
-        // Bigger explosion particles!
-        for (let k = 0; k < 50; k++) {
-          particles.push({ x: explodeX, y: explodeY, vx: (Math.random()-0.5)*20, vy: -Math.random()*15, life: 50, color: k % 2 ? '#ff6644' : '#ffaa00', size: 12 });
+        for (let k = 0; k < 25; k++) {
+          particles.push({ x: explodeX, y: explodeY, vx: (Math.random()-0.5)*14, vy: -Math.random()*10, life: 40, color: k % 2 ? '#ff6644' : '#ffaa00', size: 9 });
         }
-        // Screen shake effect text
-        particles.push({ x: explodeX, y: explodeY - 30, vx: 0, vy: -2, life: 40, text: 'BOOM!', color: '#ff4400', big: true });
         bomberUnits.splice(i, 1);
-        AudioSystem.SFX.explosion();
         return;
       }
     }
 
-    // ENEMY interactions - larger touch area for mobile (bigger near castle wall)
-    const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-    const baseTouchMargin = isMobile ? 55 : 40; // Much bigger on mobile
+    // ENEMY interactions - EXTRA LARGE touch area for mobile (even bigger near castle wall)
+    const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.innerWidth < 800;
+    const baseTouchMargin = isMobile ? 70 : 40; // Much bigger on mobile
     for (const e of enemies) {
-      // Extra margin near castle wall where it's hard to grab
-      const nearCastleWall = e.x > CASTLE_X - 150;
-      const touchMargin = nearCastleWall ? baseTouchMargin + 25 : baseTouchMargin;
+      // Extra margin near castle wall where it's hard to grab - significantly larger
+      const nearCastleWall = e.x > CASTLE_X - 180;
+      const touchMargin = nearCastleWall ? baseTouchMargin + 40 : baseTouchMargin;
       if ((e.state === 'walk' || e.state === 'attack' || e.state === 'stunned') &&
           mouseX > e.x - touchMargin && mouseX < e.x + e.size + touchMargin &&
           mouseY > e.y - e.size - touchMargin && mouseY < e.y + touchMargin) {
@@ -5832,8 +5666,7 @@ function drawSkull(ctx, x, y, size, color) {
           e.state = 'held';
           heldEnemy = e;
           AudioSystem.SFX.grab();
-          // No talk bubble for small skeletons - just the GRABBED text
-          particles.push({ x: e.x + e.size/2, y: e.y - e.size - 5, vx: 0, vy: -1, life: 25, text: 'GRABBED!', color: '#88ff88' });
+          // No text or bubble - just grab silently for cleaner mobile experience
         }
         else if ((e.isGiant || e.isRam || e.isBoss || e.isTitan || e.isBrute) && e.state !== 'stunned') {
           // Click to make big guys fall down!
@@ -5916,18 +5749,34 @@ function drawSkull(ctx, x, y, size, color) {
   });
   C.addEventListener('touchend', ev => {
     ev.preventDefault();
-    // Apply swipe velocity to throw
+    // Apply swipe velocity to throw - improved for mobile near castle
     if (heldEnemy) {
       const castleLeft = CASTLE_X - 120;
-      const nearCastle = heldEnemy.x > castleLeft - 60;
-      if (nearCastle) {
-        heldEnemy.state = 'fall';
-        heldEnemy.vx = 0; heldEnemy.vy = 2;
+      const nearCastle = heldEnemy.x > castleLeft - 80;
+      const swipeStrength = Math.sqrt(touchVelX * touchVelX + touchVelY * touchVelY);
+
+      heldEnemy.state = 'fall';
+
+      // Detect swipe intent - if swipe is strong enough, always throw
+      if (swipeStrength > 4) {
+        // Strong swipe - apply velocity with boost for easier throwing
+        const throwBoost = nearCastle ? 1.5 : 1.0; // Extra boost when near castle
+        heldEnemy.vx = touchVelX * 1.2 * throwBoost;
+        heldEnemy.vy = Math.min(-6, touchVelY * 1.5 - 10); // Strong upward throw
+        AudioSystem.SFX.throw();
+        showTalkBubble(C, heldEnemy.x + heldEnemy.size/2, heldEnemy.y - heldEnemy.size, 'throw');
+      } else if (nearCastle && heldEnemy.x > castleLeft) {
+        // Inside castle walls with gentle release - capture
+        heldEnemy.vx = 0;
+        heldEnemy.vy = 2; // Gentle drop
+      } else if (nearCastle) {
+        // Near castle but not inside - small toss toward castle for capture
+        heldEnemy.vx = 3; // Push toward castle
+        heldEnemy.vy = -3; // Small hop
       } else {
-        heldEnemy.state = 'fall';
-        // Use swipe velocity for throwing
+        // Far from castle - normal throw
         heldEnemy.vx = touchVelX * 0.8;
-        heldEnemy.vy = Math.min(-5, touchVelY * 1.2 - 8); // Always throw up
+        heldEnemy.vy = Math.min(-5, touchVelY * 1.2 - 8);
       }
       heldEnemy = null;
     }
@@ -5935,9 +5784,12 @@ function drawSkull(ctx, x, y, size, color) {
 
   // Keyboard
   document.addEventListener('keydown', ev => {
-    if (state !== 'running' && ev.key !== 's' && ev.key !== 'S') return;
     const key = ev.key.toLowerCase();
+    // Pause toggle works anytime
+    if (key === 'p' || key === 'escape') { castleTogglePause(); return; }
+    if (state !== 'running' && state !== 'paused' && key !== 's') return;
     if (key === 's') { showShop = !showShop; if (showShop) shopScrollY = 0; return; }
+    if (state === 'paused') return; // Don't process other keys while paused
 
     // Assign trained skeletons to archer tower
     if (key === 'a' && !showShop && trainedSupply > 0 && upgrades.archerTower.level > 0) {
@@ -5971,7 +5823,31 @@ function drawSkull(ctx, x, y, size, color) {
   window.castleStart = start;
   window.castleShop = function() { showShop = !showShop; if (showShop) shopScrollY = 0; };
   window.castleSpeed = toggleSpeed;
-  window.castlePause = function() { if (state === 'running') { cancelAnimationFrame(raf); AudioSystem.stopMusic(); } };
+  window.castlePause = function() { if (state === 'running') { state = 'paused'; cancelAnimationFrame(raf); AudioSystem.stopMusic(); } };
+  window.castleTogglePause = function() {
+    const btn = document.getElementById('castle-pause-btn');
+    if (state === 'running') {
+      state = 'paused';
+      cancelAnimationFrame(raf);
+      AudioSystem.stopMusic();
+      if (btn) btn.textContent = 'Resume';
+      // Draw pause overlay
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#d4af37';
+      ctx.font = 'bold 36px Cinzel';
+      ctx.textAlign = 'center';
+      ctx.fillText('PAUSED', W/2, H/2 - 20);
+      ctx.font = '16px Cinzel';
+      ctx.fillStyle = '#e8dcc4';
+      ctx.fillText('Press P or click Resume to continue', W/2, H/2 + 20);
+      ctx.textAlign = 'left';
+    } else if (state === 'paused') {
+      state = 'running';
+      if (btn) btn.textContent = 'Pause';
+      raf = requestAnimationFrame(loop);
+    }
+  };
 
   // Initial draw
   ctx.fillStyle = '#1a0a1a'; ctx.fillRect(0, 0, W, H);
