@@ -553,6 +553,7 @@ document.getElementById('installModal').addEventListener('click', function(e) { 
       <button class="btn-game" id="castle-pause-btn" onclick="castleTogglePause()" style="background:#4a3a2a;">Pause</button>
       <button class="btn-game" onclick="castleShop()" style="background:#3a2a4a;">Shop</button>
       <button class="btn-game" onclick="castleSpeed()" style="background:#4a4a2a;">Speed</button>
+      <button class="btn-game" onclick="castleSkipWave()" style="background:#5a2a2a;">Skip Wave</button>
       <button class="btn-game btn-fullscreen" onclick="toggleFullscreen('castle')">Fullscreen</button>
     </div>
     <div class="instructions"><strong>Click</strong> stun big enemies | <strong>Drag+Throw</strong> off screen to kill, into castle to capture | <strong>HOW TO WIN:</strong> Defend castle! Click tower flags to assign troops. Some enemies are arrow/mage immune - use boulders or throw them!</div>
@@ -1288,6 +1289,9 @@ function drawSkull(ctx, x, y, size, color) {
   function jump() { if (skull.dead) { runnerStart(); return; } if (!skull.jumping && !skull.ducking) { skull.vy = -14; skull.jumping = true; AudioSystem.SFX.jump(); } }
   function duck(on) { if (!skull.jumping) { skull.ducking = on; if (on) AudioSystem.SFX.duck(); } }
 
+  // Track last spawn position to prevent overlaps
+  let lastSpawnX = 0;
+
   function update() {
     tick++; score += 0.12; speed = 5 + Math.floor(score / 100) * 0.5;
     document.getElementById('runner-score').textContent = Math.floor(score);
@@ -1295,59 +1299,51 @@ function drawSkull(ctx, x, y, size, color) {
     const skH = skull.ducking ? DUCK_H : SKULL_H;
     if (skull.y >= GY - skH) { skull.y = GY - skH; skull.vy = 0; skull.jumping = false; }
 
-    // Spawn obstacles with flyers INTEGRATED - flyers replace some ground obstacles
-    const baseGap = Math.max(280, 480 - score * 0.2);
-    const gapVariance = 80 + Math.random() * 150; // Random 80-230 extra pixels
+    // Update lastSpawnX based on speed (it moves left each frame)
+    lastSpawnX -= speed;
+
+    // Spawn obstacles OR flyers - NEVER BOTH AT SAME POSITION
+    const baseGap = Math.max(320, 500 - score * 0.15);
+    const gapVariance = 100 + Math.random() * 180;
     const gap = baseGap + gapVariance;
 
-    const lastObs = obstacles[obstacles.length - 1];
-    const lastFall = fallingThings[fallingThings.length - 1];
-
-    // Check if we should spawn something new
-    if (obstacles.length === 0 || (lastObs && lastObs.x < W - gap)) {
-      // Decide what to spawn: ground obstacle OR flyer (flyers replace ground obstacles)
+    // Only spawn if enough distance from LAST SPAWN (ground OR flyer)
+    if (lastSpawnX < W - gap) {
       const spawnRoll = Math.random();
 
-      // Safe spacing from other flyers
-      const flyerSpacing = Math.max(400, 500 - score * 0.08);
-      const canSpawnFlyer = !lastFall || lastFall.x < W - flyerSpacing;
-
-      // 30% chance to spawn flyer instead of ground obstacle (replaces ground obstacle)
-      // Flyers are placed IN BETWEEN ground obstacles
-      if (canSpawnFlyer && spawnRoll < 0.30) {
-        // Spawn a flyer in place of ground obstacle
+      if (spawnRoll < 0.25) {
+        // 25% = FLYER ONLY (no ground obstacle here)
         const flyerRoll = Math.random();
+        const spawnX = W + 60;
 
-        if (flyerRoll < 0.35) {
-          // HIGH FLYER - must DUCK to avoid (bats/ghosts)
+        if (flyerRoll < 0.40) {
+          // HIGH FLYER - must DUCK
           const flyType = Math.random() > 0.5 ? 'bat' : 'ghost';
           const targetY = GY - DUCK_H - 5 - 22;
           fallingThings.push({
-            x: W + 60, y: targetY - 40, targetY: targetY,
+            x: spawnX, y: targetY - 40, targetY: targetY,
             type: flyType, w: 45, h: 22, phase: 0, mustDuck: true
           });
           AudioSystem.SFX.swoosh();
-        } else if (flyerRoll < 0.50) {
-          // DIVE BOMBER - starts high, dives down!
+        } else if (flyerRoll < 0.55) {
+          // DIVE BOMBER
           const flyType = Math.random() > 0.5 ? 'hawk' : 'demon';
           fallingThings.push({
-            x: W + 80, y: -60, targetY: GY - 45,
+            x: spawnX + 20, y: -60, targetY: GY - 45,
             type: flyType, w: 40, h: 35, phase: 0, mustDuck: false, isDiver: true
           });
         } else {
-          // LOW FLYER - must JUMP to avoid (reapers/crows)
+          // LOW FLYER - must JUMP
           const flyType = Math.random() > 0.5 ? 'reaper' : 'crow';
           fallingThings.push({
-            x: W + 60, y: -40, targetY: GY - 42,
+            x: spawnX, y: -40, targetY: GY - 42,
             type: flyType, w: 40, h: 38, phase: 0, mustDuck: false
           });
         }
-        // Skip ground obstacle - flyer takes its place
-      } else if (spawnRoll < 0.85) {
-        // 55% chance for ground obstacle (85-30=55)
-        // Use pattern system for varied obstacle groupings
+        lastSpawnX = spawnX; // Track this spawn position
+      } else if (spawnRoll < 0.80) {
+        // 55% = GROUND OBSTACLE ONLY (no flyer here)
         if (patternQueue.length === 0 && Math.random() < 0.35) {
-          // 35% chance to start a multi-obstacle pattern
           patternQueue = spawnPattern();
         }
 
@@ -1355,12 +1351,17 @@ function drawSkull(ctx, x, y, size, color) {
           const next = patternQueue.shift();
           const o = getObsForPattern(next.type);
           obstacles.push({ x: W + 20 + (next.offset || 0), y: GY - o.h, ...o });
+          lastSpawnX = W + 20 + (next.offset || 0);
         } else {
           const o = groundObs();
           obstacles.push({ x: W + 20, y: GY - o.h, ...o });
+          lastSpawnX = W + 20;
         }
       }
-      // Remaining 15% = empty gap (gives player a breather)
+      // Remaining 20% = empty gap (breather)
+      else {
+        lastSpawnX = W; // Still track position even for gaps
+      }
     }
     obstacles.forEach(o => o.x -= speed);
     obstacles = obstacles.filter(o => o.x > -60);
@@ -3678,7 +3679,7 @@ function drawSkull(ctx, x, y, size, color) {
   // UPGRADES SYSTEM - Towers with colored flags
   const upgrades = {
     walls: { level: 0, maxLevel: 5, cost: [80, 150, 250, 400, 600], bonus: 20 },
-    repair: { level: 0, maxLevel: 99, cost: [50], desc: 'Repair castle +25 HP!', isRepair: true },  // REPAIR - always buyable!
+    repair: { level: 0, maxLevel: 99, baseCost: 30, currentCost: 30, desc: 'Repair castle +25 HP!', isRepair: true },  // REPAIR - escalating cost!
     moat: { level: 0, maxLevel: 3, cost: [120, 250, 400], slowPercent: [20, 35, 50] },
     oilPots: { level: 0, maxLevel: 3, cost: [150, 300, 500], damage: [1, 2, 3] },
     training: { level: 0, maxLevel: 1, cost: [100], desc: 'Unlock skeleton training!' },
@@ -3699,11 +3700,11 @@ function drawSkull(ctx, x, y, size, color) {
   };
   let oilTimer = 0;
 
-  // SPECIAL ABILITIES - Unlock first, then costs gold each use + cooldown
+  // SPECIAL ABILITIES - Pay per use, price increases each use
   const abilities = {
-    arrowRain: { cooldown: 0, maxCooldown: 600, unlockCost: 80, useCost: 15, unlocked: false, desc: 'Arrow rain (15g)' },
-    lightning: { cooldown: 0, maxCooldown: 900, unlockCost: 150, useCost: 25, unlocked: false, desc: 'Storm (25g)' },
-    boulder: { cooldown: 0, maxCooldown: 1500, unlockCost: 250, useCost: 200, unlocked: false, desc: 'Boulder (200g)' }
+    arrowRain: { cooldown: 0, maxCooldown: 600, baseCost: 10, useCost: 10, useCount: 0, desc: 'Arrow Rain' },
+    lightning: { cooldown: 0, maxCooldown: 900, baseCost: 20, useCost: 20, useCount: 0, desc: 'Lightning Storm' },
+    boulder: { cooldown: 0, maxCooldown: 1500, baseCost: 30, useCost: 30, useCount: 0, desc: 'Boulder' }
   };
 
   // DEFENDER TYPES - for assignments
@@ -3774,8 +3775,15 @@ function drawSkull(ctx, x, y, size, color) {
     archerTimers = [];
     bomberUnits = []; stormCount = 0; knightUnits = []; catapultCount = 0;
     waveSpawnTimer = 0; waveEnemiesLeft = []; stormZapTimer = 0;
-    Object.keys(upgrades).forEach(k => upgrades[k].level = 0);
-    Object.keys(abilities).forEach(k => { abilities[k].cooldown = 0; abilities[k].unlocked = false; });
+    Object.keys(upgrades).forEach(k => {
+      upgrades[k].level = 0;
+      if (upgrades[k].isRepair) upgrades[k].currentCost = upgrades[k].baseCost;
+    });
+    Object.keys(abilities).forEach(k => {
+      abilities[k].cooldown = 0;
+      abilities[k].useCount = 0;
+      abilities[k].useCost = abilities[k].baseCost;
+    });
     oilTimer = 0;
     document.getElementById('castle-over').classList.remove('show');
     updateHUD();
@@ -3913,8 +3921,8 @@ function drawSkull(ctx, x, y, size, color) {
   function killEnemy(e, byDefender) {
     if (e.state === 'dead') return;
     e.state = 'dead'; kills++;
-    // Defenders (archers/storm) get 5-8 gold per kill
-    const goldEarned = byDefender ? (5 + Math.floor(Math.random() * 4)) : e.goldValue;
+    // Gold based on enemy difficulty - harder enemies give more gold!
+    const goldEarned = e.goldValue + (byDefender ? Math.floor(Math.random() * 3) : 0);
     gold += goldEarned;
     for (let i = 0; i < 8; i++) {
       particles.push({ x: e.x + e.size/2, y: e.y - e.size/2, vx: (Math.random()-0.5)*5, vy: -Math.random()*5, life: 30, color: e.color, size: 4 });
@@ -3949,14 +3957,17 @@ function drawSkull(ctx, x, y, size, color) {
 
   function useAbility(name) {
     const a = abilities[name];
-    if (a.cooldown > 0 || !a.unlocked) return;
-    // Abilities cost gold to use after unlocking!
+    if (a.cooldown > 0) return;
+    // Abilities cost gold per use - price increases each time!
     if (gold < a.useCost) {
       particles.push({ x: W/2, y: H/2, vx: 0, vy: 0, life: 60, text: 'Need ' + a.useCost + 'g!', color: '#ff4444', big: true });
       return;
     }
     gold -= a.useCost;
     a.cooldown = a.maxCooldown;
+    a.useCount++;
+    // Price increases by 5 gold each use
+    a.useCost = a.baseCost + (a.useCount * 5);
     updateHUD();
 
     if (name === 'arrowRain') {
@@ -5219,6 +5230,22 @@ function drawSkull(ctx, x, y, size, color) {
       drawUpgradeBtnMobile('moat', 'MOAT', '#3a4a5a');
       drawUpgradeBtnMobile('oilPots', 'OIL POTS', '#5a3a2a');
 
+      // REPAIR - Special button with dynamic cost
+      const repairU = upgrades.repair;
+      const canRepair = gold >= repairU.currentCost && castleHP < maxHP;
+      ctx.fillStyle = canRepair ? '#2a5a3a' : '#2a2a3a';
+      ctx.fillRect(startX, y, btnW, btnH);
+      ctx.strokeStyle = canRepair ? '#4a4' : '#444';
+      ctx.lineWidth = 2; ctx.strokeRect(startX, y, btnW, btnH);
+      ctx.fillStyle = canRepair ? '#4f4' : '#666';
+      ctx.font = 'bold ' + fontSize + 'px Cinzel'; ctx.textAlign = 'center';
+      ctx.fillText('REPAIR CASTLE (+25 HP)', startX + btnW/2, y + btnH/2 - 4);
+      ctx.font = smallFontSize + 'px Cinzel';
+      ctx.fillText(repairU.currentCost + 'g (cost increases)', startX + btnW/2, y + btnH/2 + 14);
+      ctx.textAlign = 'left';
+      shopButtons.push({ x: startX, y, w: btnW, h: btnH, action: 'upgrade', name: 'repair' });
+      y += btnH + 12;
+
       // TRAINING
       drawSectionHeader('TRAINING', '#88ffff');
       drawUpgradeBtnMobile('training', 'TRAINING', '#3a5a5a');
@@ -5252,26 +5279,27 @@ function drawSkull(ctx, x, y, size, color) {
       drawSectionHeader('SIEGE', '#9944ff');
       drawUpgradeBtnMobile('catapult', 'CATAPULT', '#4a2a5a');
 
-      // ABILITIES
-      drawSectionHeader('ABILITIES', '#d4af37');
+      // ABILITIES - Pay per use, price increases each time
+      drawSectionHeader('ABILITIES (cost per use)', '#d4af37');
       Object.entries(abilities).forEach(([name, a]) => {
-        const canBuy = !a.unlocked && gold >= a.unlockCost;
-        const status = a.unlocked ? 'USE: ' + a.useCost + 'g' : 'UNLOCK: ' + a.unlockCost + 'g';
+        const canUse = gold >= a.useCost && a.cooldown <= 0;
+        const onCooldown = a.cooldown > 0;
+        const status = onCooldown ? 'COOLDOWN...' : 'USE: ' + a.useCost + 'g';
 
-        ctx.fillStyle = a.unlocked ? '#2a4a2a' : (canBuy ? '#4a4a2a' : '#2a2a3a');
+        ctx.fillStyle = onCooldown ? '#3a3a3a' : (canUse ? '#2a4a2a' : '#2a2a3a');
         ctx.fillRect(startX, y, btnW, btnH);
-        ctx.strokeStyle = a.unlocked ? '#4a4' : (canBuy ? '#aa6' : '#444');
+        ctx.strokeStyle = onCooldown ? '#555' : (canUse ? '#4a4' : '#444');
         ctx.lineWidth = 2; ctx.strokeRect(startX, y, btnW, btnH);
 
-        ctx.fillStyle = a.unlocked ? '#6a6' : (canBuy ? '#fff' : '#666');
+        ctx.fillStyle = onCooldown ? '#666' : (canUse ? '#4f4' : '#888');
         ctx.font = 'bold ' + fontSize + 'px Cinzel'; ctx.textAlign = 'center';
-        ctx.fillText(name.toUpperCase(), startX + btnW/2, y + btnH/2 - 4);
+        ctx.fillText(a.desc, startX + btnW/2, y + btnH/2 - 4);
         ctx.font = smallFontSize + 'px Cinzel';
         ctx.fillText(status, startX + btnW/2, y + btnH/2 + 14);
         ctx.textAlign = 'left';
 
-        if (!a.unlocked) shopButtons.push({ x: startX, y, w: btnW, h: btnH, action: 'ability', name });
-        y += btnH + 12; // Extra spacing between buttons
+        if (!onCooldown) shopButtons.push({ x: startX, y, w: btnW, h: btnH, action: 'useAbility', name });
+        y += btnH + 12;
       });
 
       // Store total content height for scrolling
@@ -5332,12 +5360,25 @@ function drawSkull(ctx, x, y, size, color) {
       const col1 = 35, col2 = 125;
       const btnW = 145;
 
-      // ROW 1: Castle Defenses
+      // ROW 1: Castle Defenses + Repair
       ctx.fillStyle = '#888'; ctx.font = 'bold 11px Cinzel'; ctx.textAlign = 'left';
       ctx.fillText('CASTLE:', col1, y + 17);
       drawUpgradeBtn('walls', col2, y, btnW, '#3a4a3a');
       drawUpgradeBtn('moat', col2 + btnW + 5, y, btnW, '#3a4a5a');
       drawUpgradeBtn('oilPots', col2 + btnW*2 + 10, y, btnW, '#5a3a2a');
+      // Repair button
+      const repairU = upgrades.repair;
+      const canRepair = gold >= repairU.currentCost && castleHP < maxHP;
+      const repairX = col2 + btnW*3 + 15;
+      ctx.fillStyle = canRepair ? '#2a5a3a' : '#2a2a3a';
+      ctx.fillRect(repairX, y, btnW, 26);
+      ctx.strokeStyle = canRepair ? '#4a4' : '#444';
+      ctx.lineWidth = 1; ctx.strokeRect(repairX, y, btnW, 26);
+      ctx.fillStyle = canRepair ? '#4f4' : '#555';
+      ctx.font = '10px Cinzel'; ctx.textAlign = 'center';
+      ctx.fillText('REPAIR +25HP ' + repairU.currentCost + 'g', repairX + btnW/2, y + 17);
+      ctx.textAlign = 'left';
+      shopButtons.push({ x: repairX, y, w: btnW, h: 26, action: 'upgrade', name: 'repair' });
       y += 32;
 
       // ROW 2: Training
@@ -5379,28 +5420,29 @@ function drawSkull(ctx, x, y, size, color) {
       drawUpgradeBtn('catapult', col2, y, btnW, '#4a2a5a');
       y += 36;
 
-      // ABILITIES section
+      // ABILITIES section - Pay per use, price increases
       ctx.fillStyle = '#d4af37'; ctx.font = 'bold 13px Cinzel'; ctx.textAlign = 'left';
-      ctx.fillText('ABILITIES (unlock once, pay to use):', col1, y + 14);
+      ctx.fillText('ABILITIES (cost per use, price increases):', col1, y + 14);
       y += 22;
       let ax = col1;
       Object.entries(abilities).forEach(([name, a]) => {
-        const canBuy = !a.unlocked && gold >= a.unlockCost;
-        const status = a.unlocked ? 'USE: ' + a.useCost + 'g' : 'UNLOCK: ' + a.unlockCost + 'g';
+        const canUse = gold >= a.useCost && a.cooldown <= 0;
+        const onCooldown = a.cooldown > 0;
+        const status = onCooldown ? 'COOLDOWN...' : 'USE: ' + a.useCost + 'g';
 
-        ctx.fillStyle = a.unlocked ? '#2a4a2a' : (canBuy ? '#4a4a2a' : '#2a2a3a');
+        ctx.fillStyle = onCooldown ? '#3a3a3a' : (canUse ? '#2a4a2a' : '#2a2a3a');
         ctx.fillRect(ax, y, 145, 32);
-        ctx.strokeStyle = a.unlocked ? '#4a4' : (canBuy ? '#aa6' : '#444');
+        ctx.strokeStyle = onCooldown ? '#555' : (canUse ? '#4a4' : '#444');
         ctx.lineWidth = 1; ctx.strokeRect(ax, y, 145, 32);
 
-        ctx.fillStyle = a.unlocked ? '#6a6' : (canBuy ? '#ddd' : '#555');
+        ctx.fillStyle = onCooldown ? '#666' : (canUse ? '#4f4' : '#888');
         ctx.font = '11px Cinzel'; ctx.textAlign = 'center';
-        ctx.fillText(name.toUpperCase(), ax + 72, y + 14);
+        ctx.fillText(a.desc, ax + 72, y + 14);
         ctx.font = '9px Cinzel';
         ctx.fillText(status, ax + 72, y + 26);
         ctx.textAlign = 'left';
 
-        if (!a.unlocked) shopButtons.push({ x: ax, y, w: 145, h: 32, action: 'ability', name });
+        if (!onCooldown) shopButtons.push({ x: ax, y, w: 145, h: 32, action: 'useAbility', name });
         ax += 155;
       });
       y += 40;
@@ -5423,7 +5465,7 @@ function drawSkull(ctx, x, y, size, color) {
     for (const btn of shopButtons) {
       if (mx > btn.x && mx < btn.x + btn.w && my > btn.y && my < btn.y + btn.h) {
         if (btn.action === 'upgrade') buyUpgrade(btn.name);
-        else if (btn.action === 'ability') buyAbility(btn.name);
+        else if (btn.action === 'useAbility') { useAbility(btn.name); showShop = false; }
         else if (btn.action === 'scrollUp') { shopScrollY = Math.max(0, shopScrollY - 120); }
         else if (btn.action === 'scrollDown') { shopScrollY = Math.min(maxScroll, shopScrollY + 120); }
         return true;
@@ -5498,19 +5540,21 @@ function drawSkull(ctx, x, y, size, color) {
 
   function buyUpgrade(name) {
     const u = upgrades[name];
-    // Special handling for repair - always costs 50g, heals 25 HP, can buy unlimited times
+    // Special handling for repair - costs escalate each use
     if (u.isRepair) {
-      if (gold < 50) return;
+      if (gold < u.currentCost) return;
       if (castleHP >= maxHP) {
         particles.push({ x: W/2, y: H/2, vx: 0, vy: -1, life: 40, text: 'Castle is full HP!', color: '#ffaa00', big: true });
         return;
       }
-      gold -= 50;
+      gold -= u.currentCost;
       const healAmount = Math.min(25, maxHP - castleHP);
       castleHP += healAmount;
+      u.level++;
+      u.currentCost = u.baseCost + (u.level * 15); // Cost increases by 15g each repair
       AudioSystem.SFX.purchase();
       updateHUD();
-      particles.push({ x: W/2, y: H/2, vx: 0, vy: -1, life: 60, text: '+' + healAmount + ' HP repaired!', color: '#88ff88', big: true });
+      particles.push({ x: W/2, y: H/2, vx: 0, vy: -1, life: 60, text: '+' + healAmount + ' HP! (Next: ' + u.currentCost + 'g)', color: '#88ff88', big: true });
       return;
     }
     if (u.level >= u.maxLevel || gold < u.cost[u.level]) return;
@@ -5847,6 +5891,29 @@ function drawSkull(ctx, x, y, size, color) {
       if (btn) btn.textContent = 'Pause';
       raf = requestAnimationFrame(loop);
     }
+  };
+  window.castleSkipWave = function() {
+    if (state !== 'running') return;
+    // Clear all enemies and give partial gold (helps when enemies get stuck)
+    const remainingEnemies = enemies.filter(e => e.state !== 'dead');
+    if (remainingEnemies.length === 0 && waveEnemiesLeft.length === 0) {
+      particles.push({ x: W/2, y: H/2, vx: 0, vy: 0, life: 60, text: 'No enemies to skip!', color: '#ffaa00', big: true });
+      return;
+    }
+    // Give 25% gold for each remaining enemy
+    let skippedGold = 0;
+    remainingEnemies.forEach(e => {
+      skippedGold += Math.floor(e.goldValue * 0.25);
+      e.state = 'dead';
+    });
+    waveEnemiesLeft.forEach(type => {
+      skippedGold += 1; // Small bonus for unspawned enemies
+    });
+    gold += skippedGold;
+    enemies = [];
+    waveEnemiesLeft = [];
+    updateHUD();
+    particles.push({ x: W/2, y: H/2, vx: 0, vy: 0, life: 80, text: 'Wave skipped! +' + skippedGold + 'g (25%)', color: '#ffaa00', big: true });
   };
 
   // Initial draw
