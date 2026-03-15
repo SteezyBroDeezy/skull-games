@@ -46,6 +46,65 @@
   .install-tip { background: rgba(212,175,55,0.1); border: 1px solid var(--gold); border-radius: 8px; padding: 0.75rem 1rem; margin-top: 1rem; font-size: 0.85rem; }
   .install-tip strong { color: var(--gold); }
 
+  /* Player Initials Overlay - shows on each game canvas */
+  .initials-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.95);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    border-radius: 8px;
+  }
+  .initials-overlay.hidden { display: none; }
+  .initials-overlay h2 {
+    font-family: 'Pirata One', cursive;
+    color: var(--gold);
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    text-shadow: 0 0 20px rgba(212,175,55,0.5);
+  }
+  .initials-overlay p {
+    color: var(--bone);
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+  }
+  .initials-overlay input {
+    background: var(--card);
+    border: 3px solid var(--gold);
+    border-radius: 10px;
+    color: var(--gold);
+    font-family: 'Pirata One', cursive;
+    font-size: 3rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    width: 180px;
+    padding: 0.5rem;
+    text-align: center;
+    letter-spacing: 15px;
+    margin-bottom: 1.5rem;
+  }
+  .initials-overlay input:focus { outline: none; border-color: #fff; box-shadow: 0 0 20px rgba(212,175,55,0.5); }
+  .initials-overlay .play-btn {
+    background: linear-gradient(135deg, var(--rust), #6b3410);
+    border: 3px solid var(--gold);
+    border-radius: 12px;
+    color: var(--gold);
+    padding: 1rem 3rem;
+    font-family: 'Pirata One', cursive;
+    font-size: 1.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+  }
+  .initials-overlay .play-btn:hover {
+    background: linear-gradient(135deg, #a85015, var(--rust));
+    box-shadow: 0 0 30px rgba(212,175,55,0.6);
+    transform: scale(1.05);
+  }
+
   .arcade-header { text-align: center; padding: 1.5rem 1rem 0.8rem; border-bottom: 2px solid var(--border); background: linear-gradient(135deg, #2a241f 0%, #3a2820 50%, #2a241f 100%); }
   .arcade-title { font-family: 'Pirata One', cursive; font-size: clamp(1.8rem, 5vw, 3rem); color: var(--gold); text-shadow: 0 0 30px rgba(212,175,55,0.5); letter-spacing: 4px; }
   .arcade-subtitle { color: var(--bone); opacity: 0.7; font-size: 0.8rem; margin-top: 0.2rem; }
@@ -405,8 +464,14 @@ document.getElementById('installModal').addEventListener('click', function(e) { 
     <div class="canvas-wrap">
       <canvas id="runner-canvas" width="750" height="280"></canvas>
       <div class="game-over-msg" id="runner-over"><h2>You Died!</h2><p id="runner-final"></p><p class="funny" id="runner-funny"></p></div>
+      <div class="initials-overlay" id="runner-initials">
+        <h2>SKULL RUNNER</h2>
+        <p>Enter your initials</p>
+        <input type="text" maxlength="3" value="AAA" id="runner-initials-input">
+        <button class="play-btn" onclick="startGameWithInitials('runner')">PLAY</button>
+      </div>
     </div>
-    <div class="game-controls"><button class="btn-game" onclick="runnerStart()">Start</button><button class="btn-game btn-fullscreen" onclick="toggleFullscreen('runner')">Fullscreen</button></div>
+    <div class="game-controls"><button class="btn-game btn-fullscreen" onclick="toggleFullscreen('runner')">Fullscreen</button></div>
     <div class="mobile-controls" id="runner-mobile">
       <div class="mobile-left">
         <div class="mobile-btn mobile-action" id="runner-duck">DUCK</div>
@@ -430,8 +495,14 @@ document.getElementById('installModal').addEventListener('click', function(e) { 
     <div class="canvas-wrap">
       <canvas id="snake-canvas" width="480" height="480"></canvas>
       <div class="game-over-msg" id="snake-over"><h2>You Died!</h2><p id="snake-final"></p><p class="funny" id="snake-funny"></p></div>
+      <div class="initials-overlay" id="snake-initials">
+        <h2>SKULL SNAKE</h2>
+        <p>Enter your initials</p>
+        <input type="text" maxlength="3" value="AAA" id="snake-initials-input">
+        <button class="play-btn" onclick="startGameWithInitials('snake')">PLAY</button>
+      </div>
     </div>
-    <div class="game-controls"><button class="btn-game" onclick="snakeStart()">Start</button><button class="btn-game btn-fullscreen" onclick="toggleFullscreen('snake')">Fullscreen</button></div>
+    <div class="game-controls"><button class="btn-game btn-fullscreen" onclick="toggleFullscreen('snake')">Fullscreen</button></div>
     <div class="mobile-controls" id="snake-mobile">
       <div class="mobile-left">
         <div class="mobile-dpad"><div class="mobile-dpad-row"><div class="mobile-btn" id="snake-up">^</div></div><div class="mobile-dpad-row"><div class="mobile-btn" id="snake-left"><</div><div class="mobile-btn" id="snake-down">v</div><div class="mobile-btn" id="snake-right">></div></div></div>
@@ -463,8 +534,14 @@ document.getElementById('installModal').addEventListener('click', function(e) { 
     <div class="canvas-wrap">
       <canvas id="slither-canvas" width="850" height="550"></canvas>
       <div class="game-over-msg" id="slither-over"><h2>Devoured!</h2><p id="slither-final"></p><p class="funny" id="slither-funny"></p></div>
+      <div class="initials-overlay" id="slither-initials">
+        <h2>SKULL SLITHER</h2>
+        <p>Enter your initials</p>
+        <input type="text" maxlength="3" value="AAA" id="slither-initials-input">
+        <button class="play-btn" onclick="startGameWithInitials('slither')">PLAY</button>
+      </div>
     </div>
-    <div class="game-controls"><button class="btn-game" onclick="slitherStart()">Start</button><button class="btn-game btn-fullscreen" onclick="toggleFullscreen('slither')">Fullscreen</button></div>
+    <div class="game-controls"><button class="btn-game btn-fullscreen" onclick="toggleFullscreen('slither')">Fullscreen</button></div>
     <div class="mobile-controls" id="slither-mobile">
       <div class="mobile-left">
         <div class="mobile-joystick" id="slither-joystick"><div class="joystick-knob" id="slither-knob"></div></div>
@@ -494,6 +571,12 @@ document.getElementById('installModal').addEventListener('click', function(e) { 
     <div class="canvas-wrap">
       <canvas id="shooter-canvas" width="650" height="500" tabindex="0"></canvas>
       <div class="game-over-msg" id="shooter-over"><h2>Game Over!</h2><p id="shooter-final"></p><p class="funny" id="shooter-funny"></p></div>
+      <div class="initials-overlay" id="shooter-initials">
+        <h2>SKULL SHOOTER</h2>
+        <p>Enter your initials</p>
+        <input type="text" maxlength="3" value="AAA" id="shooter-initials-input">
+        <button class="play-btn" onclick="startGameWithInitials('shooter')">PLAY</button>
+      </div>
     </div>
     <div class="mobile-controls" id="shooter-mobile">
       <div class="mobile-left">
@@ -503,7 +586,7 @@ document.getElementById('installModal').addEventListener('click', function(e) { 
         <div class="mobile-btn mobile-fire" id="mob-fire">FIRE</div>
       </div>
     </div>
-    <div class="game-controls"><button class="btn-game" onclick="shooterStart()">Start</button><button class="btn-game btn-fullscreen" onclick="toggleFullscreen('shooter')">Fullscreen</button></div>
+    <div class="game-controls"><button class="btn-game btn-fullscreen" onclick="toggleFullscreen('shooter')">Fullscreen</button></div>
     <div class="instructions"><strong>Arrows</strong> move | <strong>SPACE</strong> shoot | <strong>HOW TO WIN:</strong> Destroy all enemy skulls. Dodge bullets. Clear waves to advance!</div>
     <div class="leaderboard"><h4>TOP 5</h4><ol id="lb-shooter"></ol></div>
   </div>
@@ -520,6 +603,12 @@ document.getElementById('installModal').addEventListener('click', function(e) { 
     <div class="canvas-wrap">
       <canvas id="centi-canvas" width="650" height="500" tabindex="0"></canvas>
       <div class="game-over-msg" id="centi-over"><h2>Devoured!</h2><p id="centi-final"></p><p class="funny" id="centi-funny"></p></div>
+      <div class="initials-overlay" id="centi-initials">
+        <h2>SKULL CENTIPEDE</h2>
+        <p>Enter your initials</p>
+        <input type="text" maxlength="3" value="AAA" id="centi-initials-input">
+        <button class="play-btn" onclick="startGameWithInitials('centipede')">PLAY</button>
+      </div>
     </div>
     <div class="mobile-controls" id="centi-mobile">
       <div class="mobile-left">
@@ -529,7 +618,7 @@ document.getElementById('installModal').addEventListener('click', function(e) { 
         <div class="mobile-btn mobile-fire" id="centi-fire">FIRE</div>
       </div>
     </div>
-    <div class="game-controls"><button class="btn-game" onclick="centiStart()">Start</button><button class="btn-game btn-fullscreen" onclick="toggleFullscreen('centipede')">Fullscreen</button></div>
+    <div class="game-controls"><button class="btn-game btn-fullscreen" onclick="toggleFullscreen('centipede')">Fullscreen</button></div>
     <div class="instructions"><strong>Arrows</strong> move | <strong>SPACE</strong> shoot | <strong>HOW TO WIN:</strong> Shoot the centipede! Each hit splits it. Destroy all segments to win!</div>
     <div class="leaderboard"><h4>TOP 5</h4><ol id="lb-centi"></ol></div>
   </div>
@@ -547,9 +636,14 @@ document.getElementById('installModal').addEventListener('click', function(e) { 
     <div class="canvas-wrap">
       <canvas id="castle-canvas" width="800" height="450"></canvas>
       <div class="game-over-msg" id="castle-over"><h2>Castle Fallen!</h2><p id="castle-final"></p><p class="funny" id="castle-funny"></p></div>
+      <div class="initials-overlay" id="castle-initials">
+        <h2>SKULL CASTLE</h2>
+        <p>Enter your initials</p>
+        <input type="text" maxlength="3" value="AAA" id="castle-initials-input">
+        <button class="play-btn" onclick="startGameWithInitials('castle')">PLAY</button>
+      </div>
     </div>
     <div class="game-controls">
-      <button class="btn-game" onclick="castleStart()">Start</button>
       <button class="btn-game" id="castle-pause-btn" onclick="castleTogglePause()" style="background:#4a3a2a;">Pause</button>
       <button class="btn-game" onclick="castleShop()" style="background:#3a2a4a;">Shop</button>
       <button class="btn-game" onclick="castleSpeed()" style="background:#4a4a2a;">Speed</button>
@@ -950,6 +1044,59 @@ function setSfxVolume(val) {
   localStorage.setItem('sfxVolume', val);
 }
 
+// Player initials handling - shows overlay before each game starts
+let currentPlayerInitials = localStorage.getItem('playerInitials') || 'AAA';
+
+function startGameWithInitials(game) {
+  // Get initials from the input
+  const inputId = game === 'centipede' ? 'centi-initials-input' : game + '-initials-input';
+  const input = document.getElementById(inputId);
+  if (input) {
+    currentPlayerInitials = input.value.toUpperCase().substring(0, 3) || 'AAA';
+    localStorage.setItem('playerInitials', currentPlayerInitials);
+    // Also update the main nickname input
+    const mainInput = document.getElementById('player-nickname');
+    if (mainInput) mainInput.value = currentPlayerInitials;
+  }
+
+  // Hide the overlay
+  const overlayId = game === 'centipede' ? 'centi-initials' : game + '-initials';
+  const overlay = document.getElementById(overlayId);
+  if (overlay) overlay.classList.add('hidden');
+
+  // Start the appropriate game
+  if (game === 'runner') runnerStart();
+  else if (game === 'snake') snakeStart();
+  else if (game === 'slither') slitherStart();
+  else if (game === 'shooter') shooterStart();
+  else if (game === 'centipede') centiStart();
+  else if (game === 'castle') castleStart();
+}
+
+// Show initials overlay when switching games
+function showInitialsOverlay(game) {
+  const overlayId = game === 'centipede' ? 'centi-initials' : game + '-initials';
+  const inputId = game === 'centipede' ? 'centi-initials-input' : game + '-initials-input';
+  const overlay = document.getElementById(overlayId);
+  const input = document.getElementById(inputId);
+  if (overlay) {
+    overlay.classList.remove('hidden');
+    if (input) {
+      input.value = currentPlayerInitials;
+      input.select();
+    }
+  }
+}
+
+// Initialize all initials inputs with saved value
+document.addEventListener('DOMContentLoaded', () => {
+  const games = ['runner', 'snake', 'slither', 'shooter', 'centi', 'castle'];
+  games.forEach(g => {
+    const input = document.getElementById(g + '-initials-input');
+    if (input) input.value = currentPlayerInitials;
+  });
+});
+
 // Restore audio preferences
 document.addEventListener('DOMContentLoaded', () => {
   // Restore on/off state
@@ -1014,6 +1161,8 @@ function showGame(id) {
   try { shooterPause(); } catch(e) {}
   try { centiPause(); } catch(e) {}
   try { castlePause(); } catch(e) {}
+  // Show initials overlay for the new game
+  showInitialsOverlay(id === 'centipede' ? 'centipede' : id);
 }
 function toggleFullscreen(game) {
   const panel = document.getElementById('panel-' + game);
@@ -4480,11 +4629,7 @@ function drawSkull(ctx, x, y, size, color) {
       ctx.beginPath();
       ctx.arc(cx, baseY - e.size/2, e.size * 0.6, 0, Math.PI * 2);
       ctx.stroke();
-      // Show action hint
-      ctx.fillStyle = e.canPickUp ? '#88ff88' : '#ffcc33';
-      ctx.font = '9px Arial'; ctx.textAlign = 'center';
-      ctx.fillText(e.canPickUp ? 'GRAB' : 'TAP!', cx, baseY - e.size - 5);
-      ctx.textAlign = 'left';
+      // No hover text - cleaner experience
     }
 
     // Skull head
@@ -5045,9 +5190,14 @@ function drawSkull(ctx, x, y, size, color) {
           ctx.beginPath(); ctx.arc(p.x - 10, p.y + 18, 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
           ctx.beginPath(); ctx.arc(p.x - 5, p.y + 26, 3, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
         }
+        ctx.font = p.big ? 'bold 28px Pirata One' : 'bold 14px Cinzel';
+        ctx.textAlign = 'center';
+        // Add shadow for readability
+        ctx.fillStyle = '#000';
+        ctx.fillText(p.text, p.x + 2, p.y + 6);
         ctx.fillStyle = p.color;
-        ctx.font = p.big ? 'bold 18px Cinzel' : 'bold 12px Cinzel';
-        ctx.textAlign = 'center'; ctx.fillText(p.text, p.x, p.y + 4); ctx.textAlign = 'left';
+        ctx.fillText(p.text, p.x, p.y + 4);
+        ctx.textAlign = 'left';
       } else {
         ctx.fillStyle = p.color;
         ctx.beginPath(); ctx.arc(p.x, p.y, p.size/2, 0, Math.PI * 2); ctx.fill();
@@ -5055,12 +5205,13 @@ function drawSkull(ctx, x, y, size, color) {
       ctx.globalAlpha = 1;
     });
 
-    // ABILITY BUTTONS AT TOP - clickable when unlocked
+    // ABILITY BUTTONS AT TOP - always available, just costs gold
     let abilityBtnX = 120;
     abilityButtons = []; // Reset button positions
     Object.entries(abilities).forEach(([name, a]) => {
-      const ready = a.unlocked && a.cooldown <= 0;
-      const onCooldown = a.unlocked && a.cooldown > 0;
+      const canAfford = gold >= a.useCost;
+      const ready = a.cooldown <= 0 && canAfford;
+      const onCooldown = a.cooldown > 0;
 
       // Button background
       ctx.fillStyle = ready ? '#3a5a3a' : (onCooldown ? '#3a3a4a' : '#2a2a2a');
@@ -5078,12 +5229,9 @@ function drawSkull(ctx, x, y, size, color) {
       if (onCooldown) {
         ctx.fillStyle = '#888';
         ctx.fillText(Math.ceil(a.cooldown / 60) + 's', abilityBtnX + 35, 32);
-      } else if (!a.unlocked) {
-        ctx.fillStyle = '#666';
-        ctx.fillText('Buy in Shop', abilityBtnX + 35, 32);
       } else {
-        ctx.fillStyle = '#88ff88';
-        ctx.fillText('READY!', abilityBtnX + 35, 32);
+        ctx.fillStyle = canAfford ? '#88ff88' : '#ff8888';
+        ctx.fillText(a.useCost + 'g', abilityBtnX + 35, 32);
       }
 
       if (ready) abilityButtons.push({ x: abilityBtnX, y: 8, w: 70, h: 28, name });
